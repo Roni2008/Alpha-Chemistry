@@ -10,6 +10,8 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox
 import Alpha11
 
+# Itay Added A comment!!!!! (Example)
+
 # Read data from the CSV file and store it in a dictionary
 def read_element_data_from_csv(csv_file_path):
     element_data = {}
