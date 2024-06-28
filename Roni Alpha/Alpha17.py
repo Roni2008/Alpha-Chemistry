@@ -10,8 +10,6 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox
 import Alpha11
 
-# Itay Added A comment!!!!! (Example)
-
 # Read data from the CSV file and store it in a dictionary
 def read_element_data_from_csv(csv_file_path):
     element_data = {}
@@ -44,6 +42,7 @@ atom_names_to_numbers = {
     'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103
 }
 
+
 # Function to plot molecule
 def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, nav):
     fig = plt.figure()
@@ -56,14 +55,12 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
         if len(nav.selected_atoms) >= nav.num_atoms_to_pick:
             # Limit selection to the specified number of atoms
             return
-    
+
         clicked_scatter = event.artist
         clicked_index = atoms_plot_data.index(clicked_scatter)
         chosen_atom_position = clicked_index + 1  # Index starts from 0, so add 1 for atom position
         nav.selected_atoms.append(chosen_atom_position)
         print(f"Selected atom position in file: {chosen_atom_position}")
-        
-         
 
         # If two atoms are selected, draw the axis line and calculate Sterimol parameters
         if len(nav.selected_atoms) == 2:
@@ -73,48 +70,46 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
             atom2_coords = xyz_data[atom2_index]
             direction_vector = atom2_coords - atom1_coords
             direction_vector /= np.linalg.norm(direction_vector)  # Normalize the vector
-            
-             # Find the furthest atom in the direction of the second atom
+
+            # Find the furthest atom in the direction of the second atom
             max_projection = max(np.dot((xyz_data - atom1_coords), direction_vector))
             extended_point = atom1_coords + max_projection * direction_vector
-            
-             # Plot the line from the first atom to the furthest atom in the direction of the second atom
+
+            # Plot the line from the first atom to the furthest atom in the direction of the second atom
             ax.plot([atom1_coords[0], extended_point[0]],
                     [atom1_coords[1], extended_point[1]],
                     [atom1_coords[2], extended_point[2]], color='blue')
 
             # Add an arrowhead
-            ax.quiver(atom2_coords[0], atom2_coords[1], atom2_coords[2], 
-                      direction_vector[0], direction_vector[1], direction_vector[2], 
+            ax.quiver(atom2_coords[0], atom2_coords[1], atom2_coords[2],
+                      direction_vector[0], direction_vector[1], direction_vector[2],
                       length=0.1, color='blue', arrow_length_ratio=3)
-        
 
-            """
-            L = np.linalg.norm(atom2_coords - atom1_coords)
-            distances = np.linalg.norm(xyz_data - (atom1_coords + atom2_coords) / 2, axis=1)
-            B1 = min(distances)
-            B5 = max(distances)
-            sterimol_params = f"L: {L:.2f}, B1: {B1:.2f}, B5: {B5:.2f}"
-            print(f"Sterimol Parameters: {sterimol_params}")
-            messagebox.showinfo("Sterimol Parameters", f"Sterimol Parameters: {sterimol_params}")
-            plt.draw()
-            """
-
-            # Calculate Sterimol parameters
+           # Calculate Sterimol parameters using Alpha11
             os.chdir(r'/home/nati/Roni/Roni Alpha/Optimized_structures_xyz')
-            mols=Alpha11.Molecules(os.getcwd())
-            sterimol_params = mols.get_sterimol_dict([4,7])
+            mols = Alpha11.Molecules(os.getcwd())
+            sterimol_params = mols.get_sterimol_dict([atom1_index+1, atom2_index+1])
             file_name_without_extension = file_name[0:file_name.rfind('.')]
             sterimol_param = sterimol_params[file_name_without_extension]
+
             print(sterimol_param)
-            
-            
-           
+            print(atom1_index)
+            print(atom2_index)
+
             # Visualize B1 and B5
             L = np.linalg.norm(atom2_coords - atom1_coords)
             midpoint = (atom1_coords + atom2_coords) / 2
             B1 = sterimol_param['B1'].iloc[0]
             B5 = sterimol_param['B5'].iloc[0]
+
+            # Filter atoms in the direction of the second atom
+            projections = np.dot((xyz_data - atom1_coords), direction_vector)
+            filtered_atoms = xyz_data[projections >= 0]
+
+            # Recalculate the B1 and B5 vectors based on the filtered atoms
+            distances = np.linalg.norm(np.cross(filtered_atoms - atom1_coords, direction_vector), axis=1)
+            B1_filtered = min(distances)
+            B5_filtered = max(distances)
 
             # Generate two perpendicular vectors in the plane perpendicular to the direction_vector
             random_vector = np.random.rand(3)  # Generate a random vector
@@ -123,22 +118,18 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
             perp_vector2 = np.cross(direction_vector, perp_vector1)
             perp_vector2 /= np.linalg.norm(perp_vector2)  # Normalize the vector
 
-            # Plot B1 vector in green
-            ax.quiver(midpoint[0], midpoint[1], midpoint[2], 
-                      perp_vector1[0], perp_vector1[1], perp_vector1[2], 
-                      length=B1, color='green', arrow_length_ratio=0.1)
-
+           
             # Plot B5 vector in red
-            ax.quiver(midpoint[0], midpoint[1], midpoint[2], 
-                      perp_vector2[0], perp_vector2[1], perp_vector2[2], 
-                      length=B5, color='red', arrow_length_ratio=0.1)
+            ax.quiver(midpoint[0], midpoint[1], midpoint[2],
+                      perp_vector2[0], perp_vector2[1], perp_vector2[2],
+                      length=B5_filtered, color='red', arrow_length_ratio=0.1)
 
-            messagebox.showinfo("Sterimol Parameters", f"Sterimol Parameters: L: {L:.2f}, B1: {B1:.2f}, B5: {B5:.2f}")
+            messagebox.showinfo("Sterimol Parameters", f"Sterimol Parameters: L: {L:.2f}, B1: {B1_filtered:.2f}, B5: {B5_filtered:.2f}")
             plt.draw()
             
-            
-            
-        # If all atoms are selected, display the list of selected atom positions    
+           
+
+        # If all atoms are selected, display the list of selected atom positions
         if len(nav.selected_atoms) == nav.num_atoms_to_pick:
             selected_positions = ", ".join(map(str, nav.selected_atoms))
             nav.save_selected_atoms(selected_positions)  # Save selected atom positions to a file
@@ -156,7 +147,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
     # Plot connections between atoms
     for connection in connections:
         atom1_index, atom2_index = connection
-        atom1_coords = xyz_data[atom1_index]  
+        atom1_coords = xyz_data[atom1_index]
         atom2_coords = xyz_data[atom2_index]
         ax.plot([atom1_coords[0], atom2_coords[0]],
                 [atom1_coords[1], atom2_coords[1]],
@@ -171,6 +162,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
     ax.axis('off')  # Turn off axes
     plt.show()
 
+# Rest of the code remains the same
 # Function to remove violating connections
 def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance):
     # Create a list to store the filtered connections
@@ -266,13 +258,13 @@ def ask_num_atoms():
 # Main function
 def main():
     # Path to the CSV file containing element data
-    csv_file_path = '/home/nati/Roni/Roni Alpha/rsdii_table.csv'
+    csv_file_path = './rsdii_table.csv'
     # Read element data from CSV
     element_data = read_element_data_from_csv(csv_file_path)
 
     # Path to the zip file containing XYZ data
     zip_file_path = "/home/nati/Roni/Roni Alpha/Optimized_structures_xyz.zip"
-    extracted_folder = "/home/nati/Roni/Roni Alpha/Optimized_structures_xyz"
+    extracted_folder = "/home/nati/Roni/Roni Alpha/extrctfolder/Optimized_structures_xyz"
 
     # Extract all files from the zip
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
