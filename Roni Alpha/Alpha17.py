@@ -45,6 +45,8 @@ atom_names_to_numbers = {
 
 # Function to plot molecule
 def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, nav):
+    global real_xyz_data
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')  # Create 3D axes
 
@@ -52,6 +54,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
 
     # Function to handle mouse click event
     def onpick(event):
+        global real_xyz_data
         if len(nav.selected_atoms) >= nav.num_atoms_to_pick:
             # Limit selection to the specified number of atoms
             return
@@ -66,13 +69,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
         if len(nav.selected_atoms) == 2:
             atom1_index = nav.selected_atoms[0] - 1  # Convert to zero-based index
             atom2_index = nav.selected_atoms[1] - 1  # Convert to zero-based index
-            atom1_coords = xyz_data[atom1_index]
-            atom2_coords = xyz_data[atom2_index]
+            atom1_coords = real_xyz_data[atom1_index]
+            atom2_coords = real_xyz_data[atom2_index]
             direction_vector = atom2_coords - atom1_coords
             direction_vector /= np.linalg.norm(direction_vector)  # Normalize the vector
 
             # Find the furthest atom in the direction of the second atom
-            max_projection = max(np.dot((xyz_data - atom1_coords), direction_vector))
+            max_projection = max(np.dot((real_xyz_data - atom1_coords), direction_vector))
             extended_point = atom1_coords + max_projection * direction_vector
 
             # Plot the line from the first atom to the furthest atom in the direction of the second atom
@@ -103,13 +106,18 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
             B5 = sterimol_param['B5'].iloc[0]
 
             # Filter atoms in the direction of the second atom
-            projections = np.dot((xyz_data - atom1_coords), direction_vector)
-            filtered_atoms = xyz_data[projections >= 0]
-
+            projections = np.dot((real_xyz_data - atom1_coords), direction_vector)
+            proj_func = lambda coord: np.dot(coord - atom1_coords, direction_vector) > 0
+            filtered_atoms = list(filter(proj_func, real_xyz_data))
+            print(real_xyz_data)
+            # Visualize filtered atoms in green
+            for coord in filtered_atoms:
+                ax.scatter(coord[0], coord[1], coord[2], c='green', s=3 ** 4)
+            
             # Recalculate the B1 and B5 vectors based on the filtered atoms
             distances = np.linalg.norm(np.cross(filtered_atoms - atom1_coords, direction_vector), axis=1)
             B1_filtered = min(distances)
-            B5_filtered = max(distances)
+            B5_filtered = max(projections)
 
             # Generate two perpendicular vectors in the plane perpendicular to the direction_vector
             random_vector = np.random.rand(3)  # Generate a random vector
@@ -138,6 +146,8 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
             nav.selected_atoms.clear()
 
     # Scatter plot for atoms
+    real_xyz_data = xyz_data
+    print(real_xyz_data)
     for i, coords in enumerate(xyz_data):
         element_info = element_data.get(atom_numbers[i])
         color = element_info['color'] if element_info else 'blue'
