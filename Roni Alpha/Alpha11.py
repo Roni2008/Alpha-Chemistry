@@ -699,12 +699,12 @@ def nob_atype(xyz_df, bonds_df):
     return list_results
 
 def get_sterimol_indices(coordinates,bonds_df):
-    center=get_center_of_mass(coordinates)
-    center_atom=get_closest_atom_to_center(coordinates,center)
-    base_atoms=get_sterimol_base_atoms(center_atom,bonds_df)
+    center = get_center_of_mass(coordinates)
+    center_atom = get_closest_atom_to_center(coordinates,center)
+    base_atoms = get_sterimol_base_atoms(center_atom,bonds_df)
     return base_atoms
 
-def filter_atoms_for_sterimol(bonded_atoms_df,coordinates_df):
+def filter_atoms_for_sterimol(bonded_atoms_df, coordinates_df):
     """
     a function that filter out NOF bonds and H bonds and returns
      a dataframe of the molecule coordinates without them.

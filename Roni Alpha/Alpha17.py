@@ -9,6 +9,7 @@ from matplotlib.widgets import Button
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 import Alpha11
+from Alpha11 import *
 
 # Read data from the CSV file and store it in a dictionary
 def read_element_data_from_csv(csv_file_path):
@@ -44,14 +45,16 @@ atom_names_to_numbers = {
 
 
 # Function to plot molecule
-def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, nav):
+def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, file_name, nav):
     global real_xyz_data
     
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')  # Create 3D axes
 
     atoms_plot_data = []
-
+    
+    cur_molecule = Molecule(file_path)
+    
     # Function to handle mouse click event
     def onpick(event):
         global real_xyz_data
@@ -106,10 +109,21 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_name, 
             B5 = sterimol_param['B5'].iloc[0]
 
             # Filter atoms in the direction of the second atom
-            projections = np.dot((real_xyz_data - atom1_coords), direction_vector)
-            proj_func = lambda coord: np.dot(coord - atom1_coords, direction_vector) > 0
-            filtered_atoms = list(filter(proj_func, real_xyz_data))
-            print(real_xyz_data)
+            coords_df = get_df_from_file(file_path)
+            bonds_df = cur_molecule.bonds_df
+            base_atoms = get_sterimol_indices(coords_df, bonds_df)
+            bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
+            new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
+            if True:
+                connected_from_direction = get_molecule_connections(bonds_df, base_atoms[atom1_index], base_atoms[atom2_index])
+            else:
+                connected_from_direction = None
+            bonded_atoms_df = get_specific_bonded_atoms_df(bonds_df, connected_from_direction, new_coordinates_df)
+            
+            extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
+            coords_df = pd.DataFrame(cur_molecule.coordinates_array, columns=['X', 'Y', 'Z'])
+            edited_coords = filter_atoms_for_sterimol(cur_molecule.bonds_df, coords_df)
+
             # Visualize filtered atoms in green
             for coord in filtered_atoms:
                 ax.scatter(coord[0], coord[1], coord[2], c='green', s=3 ** 4)
@@ -250,7 +264,7 @@ class Navigation:
         # Remove violating connections
         connections = remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance=2.12)
 
-        plot_molecule(xyz_data, connections, self.element_data, atom_numbers, file_name, self)  # Pass self as nav
+        plot_molecule(xyz_data, connections, self.element_data, atom_numbers, file_path, file_name, self)  # Pass self as nav
 
     def save_selected_atoms(self, selected_positions):
         with open('selected_atom_positions.txt', 'a') as f:  # Use 'a' mode to append
