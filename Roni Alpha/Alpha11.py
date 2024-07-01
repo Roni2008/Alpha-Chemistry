@@ -900,11 +900,6 @@ def get_b1s_list(extended_df, scans=90//5):
     return [np.array(b1s),np.array(b1s_loc)]
 
 def calc_sterimol(bonded_atoms_df,extended_df):
-    print("Bonds:")
-    print(bonded_atoms_df)
-    print("Extended:")
-    print(extended_df)
-            
     edited_coordinates_df=filter_atoms_for_sterimol(bonded_atoms_df,extended_df)
     b1s,b1s_loc=get_b1s_list(edited_coordinates_df)
     B1=min(b1s[b1s>=0])
