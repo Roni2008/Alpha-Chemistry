@@ -66,8 +66,8 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
         clicked_index = atoms_plot_data.index(clicked_scatter)
         chosen_atom_position = clicked_index + 1  # Index starts from 0, so add 1 for atom position
         nav.selected_atoms.append(chosen_atom_position)
-        print(f"Selected atom position in file: {chosen_atom_position}")
-
+        print(f"Selected atom position in file: {chosen_atom_position} ")
+        
         # If two atoms are selected, draw the axis line and calculate Sterimol parameters
         if len(nav.selected_atoms) == 2:
             atom1_index = nav.selected_atoms[0] - 1  # Convert to zero-based index
@@ -101,6 +101,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             print(sterimol_param)
             print(atom1_index)
             print(atom2_index)
+            
 
             # Visualize B1 and B5
             L = np.linalg.norm(atom2_coords - atom1_coords)
@@ -121,13 +122,11 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             bonded_atoms_df = get_specific_bonded_atoms_df(bonds_df, connected_from_direction, new_coordinates_df)
             
             extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
-            coords_df = pd.DataFrame(cur_molecule.coordinates_array, columns=['X', 'Y', 'Z'])
-            edited_coords = filter_atoms_for_sterimol(cur_molecule.bonds_df, coords_df)
-
-            # Visualize filtered atoms in green
-            for coord in filtered_atoms:
-                ax.scatter(coord[0], coord[1], coord[2], c='green', s=3 ** 4)
+            edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
             
+            print(edited_coords)
+            print(bonds_df)
+            """
             # Recalculate the B1 and B5 vectors based on the filtered atoms
             distances = np.linalg.norm(np.cross(filtered_atoms - atom1_coords, direction_vector), axis=1)
             B1_filtered = min(distances)
@@ -148,7 +147,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             messagebox.showinfo("Sterimol Parameters", f"Sterimol Parameters: L: {L:.2f}, B1: {B1_filtered:.2f}, B5: {B5_filtered:.2f}")
             plt.draw()
-            
+            """            
            
 
         # If all atoms are selected, display the list of selected atom positions
@@ -282,7 +281,7 @@ def ask_num_atoms():
 # Main function
 def main():
     # Path to the CSV file containing element data
-    csv_file_path = './rsdii_table.csv'
+    csv_file_path = '/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/rsdii_table.csv'
     # Read element data from CSV
     element_data = read_element_data_from_csv(csv_file_path)
 
