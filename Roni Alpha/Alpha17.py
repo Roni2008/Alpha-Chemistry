@@ -43,6 +43,37 @@ atom_names_to_numbers = {
     'Fm': 100, 'Md': 101, 'No': 102, 'Lr': 103
 }
 
+def filter_bonds(bonds_df, atom1_index, atom2_index):
+    """
+    Removes all connections of atom1 except for its connection with atom2.
+    This is done iteratively, ensuring no indirect connections remain.
+    :param bonds_df: DataFrame of bonds where columns are 0 and 1
+    :param atom1_index: The atom index from which to remove connections
+    :param atom2_index: The atom index to preserve the connection with
+    :return: DataFrame of filtered bonds
+    """
+    def remove_connections(bonds_df, atom1, atom2):
+        # Find all connections of atom1
+        connections = bonds_df[(bonds_df[0] == atom1) | (bonds_df[1] == atom1)]
+
+        # Remove all connections of atom1 except for the connection with atom2
+        bonds_df = bonds_df[~(((bonds_df[0] == atom1) | (bonds_df[1] == atom1)) &
+                              (~((bonds_df[0] == atom2) | (bonds_df[1] == atom2))))]
+
+        # Recursively remove connections of the connected atoms
+        for _, row in connections.iterrows():
+            connected_atom = row[1] if row[0] == atom1 else row[0]
+            if connected_atom != atom2:
+                bonds_df = remove_connections(bonds_df, connected_atom, atom1)
+
+        return bonds_df
+
+    return remove_connections(bonds_df, atom1_index, atom2_index)
+
+def gather_indices(bonds_df):
+    return list(set(map(int, bonds_df.values.flatten())))
+
+
 
 # Function to plot molecule
 def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, file_name, nav):
@@ -123,8 +154,11 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
             edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
             
-            print(bonds_df)
-            print(nav.selected_atoms)
+            
+            print(gather_indices(filter_bonds(bonds_df, 2, 1)))
+
+            
+            
             
             """
             # Recalculate the B1 and B5 vectors based on the filtered atoms
