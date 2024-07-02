@@ -155,10 +155,15 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
             
             
-            print(gather_indices(filter_bonds(bonds_df, 2, 1)))
-
+            indices = gather_indices(filter_bonds(bonds_df, 2, 1))
+            indices_zero_based = [idx - 1 for idx in indices]
+            edited_coordinates = coords_df.iloc[indices_zero_based]
+            edited_coordinates['Original_Index'] = indices
+            print(edited_coordinates)
             
-            
+            for index, coord in edited_coordinates.iterrows():
+                ax.scatter(coord['x'], coord['y'], coord['z'], c='green', s=3.5 ** 4, picker=True)
+            print(edited_coordinates)
             
             """
             # Recalculate the B1 and B5 vectors based on the filtered atoms
