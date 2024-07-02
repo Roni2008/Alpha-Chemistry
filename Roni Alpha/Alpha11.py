@@ -709,10 +709,6 @@ def filter_atoms_for_sterimol(bonded_atoms_df, coordinates_df):
     a function that filter out NOF bonds and H bonds and returns
      a dataframe of the molecule coordinates without them.
     """
-    print("Bonded:")
-    print(bonded_atoms_df)
-    print("Coords:")
-    print(coordinates_df)
     allowed_bonds_indices= pd.concat([bonded_atoms_df['index_1'],bonded_atoms_df['index_2']],axis=1).reset_index(drop=True)
     atom_filter=adjust_indices(np.unique([atom for sublist in allowed_bonds_indices.values.tolist() for atom in sublist]))
     edited_coordinates_df=coordinates_df.loc[atom_filter].reset_index(drop=True)
@@ -915,7 +911,7 @@ def calc_sterimol(bonded_atoms_df,extended_df):
     return sterimol_df.T
 
 
-def get_sterimol_df(coordinates_df, bonds_df, base_atoms,connected_from_direction, radii='bondi', sub_structure=True):
+def get_sterimol_df(coordinates_df, bonds_df, base_atoms, connected_from_direction, radii='bondi', sub_structure=True):
 
     bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
     new_coordinates_df = preform_coordination_transformation(coordinates_df, bonds_direction)
@@ -1128,7 +1124,7 @@ def main():
     
     os.chdir(r'/home/nati/Roni/Roni Alpha/Optimized_structures_xyz')
     mols=Molecules(os.getcwd())
-    x=mols.get_sterimol_dict([4,7])
+    x=mols.get_sterimol_dict([41,7])
     pprint.pprint(x)
     
 if __name__ == "__main__":

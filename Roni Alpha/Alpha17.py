@@ -100,8 +100,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             print(sterimol_param)
             print(atom1_index)
-            print(atom2_index)
-            
+            print(atom2_index)            
 
             # Visualize B1 and B5
             L = np.linalg.norm(atom2_coords - atom1_coords)
@@ -124,8 +123,9 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
             edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
             
-            print(edited_coords)
             print(bonds_df)
+            print(nav.selected_atoms)
+            
             """
             # Recalculate the B1 and B5 vectors based on the filtered atoms
             distances = np.linalg.norm(np.cross(filtered_atoms - atom1_coords, direction_vector), axis=1)
