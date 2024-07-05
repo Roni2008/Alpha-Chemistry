@@ -108,9 +108,12 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             direction_vector = atom2_coords - atom1_coords
             direction_vector /= np.linalg.norm(direction_vector)  # Normalize the vector
 
+            coords_df  = get_df_from_file(file_path)
+            
+
             # Find the furthest atom in the direction of the second atom
             max_projection = max(np.dot((real_xyz_data - atom1_coords), direction_vector))
-            extended_point = atom1_coords + max_projection * direction_vector
+            extended_point = atom1_coords + max_projection * direction_vector            
 
             # Plot the line from the first atom to the furthest atom in the direction of the second atom
             ax.plot([atom1_coords[0], extended_point[0]],
@@ -140,8 +143,8 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             B5 = sterimol_param['B5'].iloc[0]
 
             # Filter atoms in the direction of the second atom
-            coords_df = get_df_from_file(file_path)
             bonds_df = cur_molecule.bonds_df
+            """
             base_atoms = get_sterimol_indices(coords_df, bonds_df)
             bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
             new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
@@ -153,40 +156,85 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             
             extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
             edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
-            
+            """
             
             indices = gather_indices(filter_bonds(bonds_df, 2, 1))
             indices_zero_based = [idx - 1 for idx in indices]
             edited_coordinates = coords_df.iloc[indices_zero_based]
             edited_coordinates['Original_Index'] = indices
-            print(edited_coordinates)
             
-            for index, coord in edited_coordinates.iterrows():
-                ax.scatter(coord['x'], coord['y'], coord['z'], c='green', s=3.5 ** 4, picker=True)
-            print(edited_coordinates)
+#            for index, coord in edited_coordinates.iterrows():
+#                ax.scatter(coord['x'], coord['y'], coord['z'], c='green', s=3 ** 4, picker=True)
             
+            A = np.array([atom1_coords[0], atom1_coords[1], atom1_coords[2]])
+            B = np.array([atom2_coords[0], atom2_coords[1], atom2_coords[2]])
+
             """
-            # Recalculate the B1 and B5 vectors based on the filtered atoms
-            distances = np.linalg.norm(np.cross(filtered_atoms - atom1_coords, direction_vector), axis=1)
-            B1_filtered = min(distances)
-            B5_filtered = max(projections)
+            # Function to project a point onto the line
+            def get_project_magniute(P, A, B):
+                            
+                a = np.array(A - A)
+                b = np.array(B - A)
+                p = np.array(P - A)
+                
+                distance_b = np.linalg.norm(b)
+                distance_p = np.linalg.norm(p)
 
-            # Generate two perpendicular vectors in the plane perpendicular to the direction_vector
-            random_vector = np.random.rand(3)  # Generate a random vector
-            perp_vector1 = np.cross(direction_vector, random_vector)
-            perp_vector1 /= np.linalg.norm(perp_vector1)  # Normalize the vector
-            perp_vector2 = np.cross(direction_vector, perp_vector1)
-            perp_vector2 /= np.linalg.norm(perp_vector2)  # Normalize the vector
+                # dot between A and B
+                above = p[0] * b[0] +  p[1] * b[1] + p[2] * b[2]
+                lower = distance_b * distance_p
+                alpha = np.arccos(above/lower)
+                
+                final_dis = distance_p * np.sin(alpha)
+                
+                return final_dis
+            
+            # Project each point and calculate the magnitudes of the projections
+            coords_df['Projection Magnitude'] = coords_df.apply(
+                lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
+            )
+            """
+            
+            # Function to project a point onto the line
+            def get_project_magniute(P, A, B):
 
-           
-            # Plot B5 vector in red
-            ax.quiver(midpoint[0], midpoint[1], midpoint[2],
-                      perp_vector2[0], perp_vector2[1], perp_vector2[2],
-                      length=B5_filtered, color='red', arrow_length_ratio=0.1)
+                AP = P - A
+                AB = B - A
+                alpha = np.arccos(np.dot(AP, AB) / (np.linalg.norm(AP) * np.linalg.norm(AB)) )
+                
+                dis = np.linalg.norm(AP) * np.sin(alpha)                
+                
+                return dis
 
-            messagebox.showinfo("Sterimol Parameters", f"Sterimol Parameters: L: {L:.2f}, B1: {B1_filtered:.2f}, B5: {B5_filtered:.2f}")
-            plt.draw()
-            """            
+            def get_projection_vector(P, A, B):
+                
+                AP = P - A
+                AB = B - A
+                alpha = np.arccos(np.dot(AP, AB) / (np.linalg.norm(AP) * np.linalg.norm(AB)) )
+                
+                dis = np.linalg.norm(AP) * np.sin(alpha)                
+                
+                H = A + dis * AB
+                
+                return H - P
+
+
+            edited_coordinates['Projection Magnitude'] = edited_coordinates.apply(
+                lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
+            )
+
+            max_projection_point = edited_coordinates.loc[edited_coordinates['Projection Magnitude'].idxmax()]
+
+            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='red', s=(radius * 100), picker=True)
+
+            """
+            # Find the point with the maximum projection
+            max_projection_point = coords_df.loc[coords_df['Projection Magnitude'].idxmax()]
+            print("Farthest",(max_projection_point))
+
+            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='yellow', s=4 ** 4, picker=True)
+            """
+
            
 
         # If all atoms are selected, display the list of selected atom positions
