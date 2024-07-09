@@ -226,6 +226,15 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             max_projection_point = edited_coordinates.loc[edited_coordinates['Projection Magnitude'].idxmax()]
 
             ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='red', s=(radius * 100), picker=True)
+        
+            start_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
+            end_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+
+
+            # Plot the perpendicular vector
+            ax.plot([start_point[0], end_point[0]],
+                    [start_point[1], end_point[1]],
+                    [start_point[2], end_point[2]], color='purple', linestyle='--')
 
             """
             # Find the point with the maximum projection
