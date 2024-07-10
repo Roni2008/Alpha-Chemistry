@@ -226,15 +226,32 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             max_projection_point = edited_coordinates.loc[edited_coordinates['Projection Magnitude'].idxmax()]
 
             ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='red', s=(radius * 100), picker=True)
-        
-            start_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
-            end_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+                    # Calculate a perpendicular vector to the blue axis
+            def get_perpendicular_vector(direction_vector):
+                if not np.allclose(direction_vector, [0, 0, 1]):
+                    perp_vector = np.cross(direction_vector, [0, 0, 1])
+                else:
+                    perp_vector = np.cross(direction_vector, [0, 1, 0])
+                perp_vector /= np.linalg.norm(perp_vector)
+                return perp_vector
 
+            perpendicular_vector = get_perpendicular_vector(direction_vector)
+            perpendicular_vector *= B1 / 2  # Scale by B1/2 for visualization
+
+            # Calculate start and end points of the perpendicular line
+            start_point = midpoint
+            end_point = start_point + perpendicular_vector
 
             # Plot the perpendicular vector
             ax.plot([start_point[0], end_point[0]],
                     [start_point[1], end_point[1]],
                     [start_point[2], end_point[2]], color='purple', linestyle='--')
+
+            # Optionally, add an arrowhead for the purple line
+            ax.quiver(start_point[0], start_point[1], start_point[2],
+                    perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
+                    length=0.1, color='purple', arrow_length_ratio=0.2)
+
 
             """
             # Find the point with the maximum projection
