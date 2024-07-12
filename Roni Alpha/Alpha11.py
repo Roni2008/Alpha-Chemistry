@@ -824,7 +824,10 @@ def calc_B1(transformed_plane,avs,edited_coordinates_df,column_index):
     # print(f'B1: {B1}, B1_loc: {B1_loc}')      
     return [B1,B1_loc]
 
+#find the direction
+
 def b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
+    
     """
     a function that gets a plane transform it and calculate the b1s for each degree.
     checks if the plane is in the x or z axis and calculates the b1s accordingly.

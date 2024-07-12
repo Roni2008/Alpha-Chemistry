@@ -237,6 +237,15 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             perpendicular_vector = get_perpendicular_vector(direction_vector)
             perpendicular_vector *= B1 / 2  # Scale by B1/2 for visualization
+            
+            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
+            ending_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+
+
+            # Plot the perpendicular vector
+            ax.plot([starting_point[0], ending_point[0]],
+                    [starting_point[1], ending_point[1]],
+                    [starting_point[2], ending_point[2]], color='green', linestyle='--')
 
             # Calculate start and end points of the perpendicular line
             start_point = midpoint
