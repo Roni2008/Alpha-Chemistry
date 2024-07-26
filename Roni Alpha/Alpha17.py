@@ -23,6 +23,138 @@ def read_element_data_from_csv(csv_file_path):
             radius = float(row[3])
             element_data[atomic_number] = {'color': color, 'radius': radius}
     return element_data
+# my calculation of B1
+def my_calc_B1(transformed_plane, avs, edited_coordinates_df, column_index):
+    """
+    Parameters
+    ----------
+    transformed_plane : np.array
+        [x,z] plane of the molecule coordinates.
+        example:
+            [-0.6868 -0.4964]
+            [-0.7384 -0.5135]
+            [-0.3759 -0.271 ]
+            [-1.1046 -0.8966]
+            [ 0.6763  0.5885]
+    avs : list
+        the max & min of the [x,z] columns from the transformed_plane.
+        example:[0.6763, -1.1046, 0.5885, -0.8966
+                 ]
+    edited_coordinates_df : TYPE
+        DESCRIPTION.
+    column_index : int
+        0 or 1 depending- being used for transformed plane.
+    """
+    ## get the index of the min value in the column compared to the avs.min
+    idx = np.where(np.isclose(np.abs(transformed_plane[:, column_index]), (avs.min()).round(4)))[0][0]
+    if transformed_plane[idx, column_index] < 0:
+        idx = np.where(np.isclose(transformed_plane[:, column_index], transformed_plane[:, column_index].min()))[0][0]
+        bool_list = np.logical_and(transformed_plane[:, column_index] >= transformed_plane[idx, column_index],
+                                   transformed_plane[:, column_index] <= transformed_plane[idx, column_index] + 1)
+
+        transformed_plane[:, column_index] = -transformed_plane[:, column_index]
+    else:
+        bool_list = np.logical_and(transformed_plane[:, column_index] >= transformed_plane[idx, column_index] - 1,
+                                   transformed_plane[:, column_index] <= transformed_plane[idx, column_index])
+
+    against, against_loc = [], []
+    B1, B1_loc = [], []
+    B1_xz = [0,0 ]
+    for i in range(1, transformed_plane.shape[0]):
+        if bool_list[i]:
+            against.append(np.array(transformed_plane[i, column_index] + edited_coordinates_df['radius'].iloc[i]))
+            against_loc.append(edited_coordinates_df['L'].iloc[i])
+        if len(against) > 0:
+            B1.append(max(against))
+            B1_loc.append(against_loc[against.index(max(against))])
+        else:
+            B1.append(np.abs(transformed_plane[idx, column_index] + edited_coordinates_df['radius'].iloc[idx]))
+            B1_loc.append(edited_coordinates_df['radius'].iloc[idx])
+
+    # print(f'B1: {B1}, B1_loc: {B1_loc}')
+    return [B1, B1_loc, transformed_plane[idx]]
+
+
+def my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
+    """
+    a function that gets a plane transform it and calculate the b1s for each degree.
+    checks if the plane is in the x or z axis and calculates the b1s accordingly.
+    Parameters:
+    ----------
+    extended_df : pd.DataFrame
+    b1s : list
+    b1s_loc : list
+    degree_list : list
+    plane : np.array
+    """
+    degree = []
+    b1s_xz = []
+    for degree in degree_list:
+        transformed_plane = get_transfomed_plane_for_sterimol(plane, degree)
+
+        avs = np.abs([max(transformed_plane[:, 0]), min(transformed_plane[:, 0]),
+                      max(transformed_plane[:, 1]), min(transformed_plane[:, 1])])
+
+       # print("Transformed Plane:", transformed_plane)
+        if min(avs) == 0:
+            min_avs_indices = np.where(avs == min(avs))[0]
+            if any(index in [0, 1] for index in min_avs_indices):
+                tc = np.round(transformed_plane, 1)
+                B1 = max(extended_df['radius'].iloc[np.where(tc[:, 0] == 0)])
+                B1_loc = extended_df['L'].iloc[np.argmax(extended_df['radius'].iloc[np.where(tc[:, 0] == 0)])]
+                b1s.append(B1)
+                b1s_loc.append(B1_loc)
+                b1s_xz.append(avs)
+                continue  # Skip the rest of the loop
+
+            elif any(index in [2, 3] for index in min_avs_indices):
+                tc = np.round(transformed_plane, 1)
+                B1 = max(extended_df['radius'].iloc[np.where(tc[:, 1] == 0)])
+                B1_loc = extended_df['L'].iloc[np.argmax(extended_df['radius'].iloc[np.where(tc[:, 1] == 0)])]
+                b1s.append(B1)
+                b1s_loc.append(B1_loc)
+                b1s_xz.append(avs)
+                continue
+
+        if np.where(avs == avs.min())[0][0] in [0, 1]:
+            B1, B1_loc, B1_xz = my_calc_B1(transformed_plane, avs, extended_df, 0)
+
+        elif np.where(avs == avs.min())[0][0] in [2, 3]:
+            B1, B1_loc, B1_xz = my_calc_B1(transformed_plane, avs, extended_df, 1)
+
+        b1s.append(np.unique(np.vstack(B1)).max())  ####check
+        b1s_loc.append(np.unique(np.vstack(B1_loc)).max())
+        b1s_xz.append(B1_xz)
+
+    return b1s, b1s_loc, b1s_xz
+
+
+def my_get_b1s_list(extended_df, scans=90 // 5):
+    b1s, b1s_loc = [], []
+    scans = scans
+    degree_list = list(range(18, 108, scans))
+    plane = np.array(extended_df[['x', 'z']].astype(float))
+    b1, b1_loc, b1_xz = my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane)
+
+    if b1s:
+        try:
+            back_ang = degree_list[np.where(b1s == min(b1s))[0][0]] - scans
+            front_ang = degree_list[np.where(b1s == min(b1s))[0][0]] + scans
+            degree_list = range(back_ang, front_ang + 1)
+        except:
+            print(np.where(np.isclose(b1s, min(b1s), atol=1e-8)))
+            back_ang = degree_list[np.where(np.isclose(b1s, min(b1s), atol=1e-8))[0][0]] - scans
+            front_ang = degree_list[np.where(np.isclose(b1s, min(b1s), atol=1e-8))[0][0]] + scans
+            degree_list = range(back_ang, front_ang + 1)
+    else:
+        print('no b1s found')
+        return np.array(b1s), np.array(b1s_loc), []
+
+    # print(f'specific degree list: {degree_list}')
+    b1, b1_loc, b1_xz = my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane)
+    # print(f'b1 arrays: {[np.array(b1s),np.array(b1s_loc)]}')
+    return np.array(b1s), np.array(b1s_loc), b1_xz
+    # b1_vectors[b1s.index(min(b1s[b1s>=0]))]
 
 # Create a dictionary to map atom names to atomic numbers
 atom_names_to_numbers = {
@@ -246,6 +378,51 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             ax.plot([starting_point[0], ending_point[0]],
                     [starting_point[1], ending_point[1]],
                     [starting_point[2], ending_point[2]], color='green', linestyle='--')
+            
+            # calculate things to prepare for b1 Calculation
+
+            base_atoms = get_sterimol_indices(coords_df, bonds_df)
+
+            bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
+            new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
+            connected_from_direction = get_molecule_connections(bonds_df, base_atoms[0], base_atoms[1])
+            bonded_atoms_df = get_specific_bonded_atoms_df(bonds_df, connected_from_direction,
+                                                           new_coordinates_df)  ## xyz data frame with only the connected atoms
+
+            extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
+            edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
+
+            # calculate b1 vector
+            edited_coordinates_df = filter_atoms_for_sterimol(bonded_atoms_df, extended_df)
+            print("Edited", edited_coordinates_df)
+            base_atoms = get_sterimol_indices(coords_df, bonds_df)
+            print(sterimol_param['B1'])
+            b1s,b1s_loc,b1s_xz=my_get_b1s_list(edited_coordinates_df)
+            b1_index=np.where(b1s == min(b1s[b1s>=0]))[0][0]
+            b1_xz = b1s_xz[b1_index]
+            b1 = b1s[b1_index]
+            b1_loc = b1s_loc[b1_index]
+            print("b1:", b1, "b1_xz:", b1_xz, "b1_loc:", b1_loc)
+
+            b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
+            b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
+            b1_vector = b1_normalized_vector * b1
+            #"""
+            # Calculate start and end points of the perpendicular line
+            start_point = midpoint
+            end_point = start_point + b1_vector
+            # Plot the perpendicular vector
+            ax.plot([start_point[0], end_point[0]],
+                    [start_point[1], end_point[1]],
+                    [start_point[2], end_point[2]], color='red', linestyle='--')
+            '''
+                    
+            # Optionally, add an arrowhead for the purple line
+            ax.quiver(start_point[0], start_point[1], start_point[2],
+                      perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
+                      length=0.1, color='red', arrow_length_ratio=0.2)
+            """
+
 
             # Calculate start and end points of the perpendicular line
             start_point = midpoint
@@ -270,7 +447,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='yellow', s=4 ** 4, picker=True)
             """
 
-           
+           '''
 
         # If all atoms are selected, display the list of selected atom positions
         if len(nav.selected_atoms) == nav.num_atoms_to_pick:
