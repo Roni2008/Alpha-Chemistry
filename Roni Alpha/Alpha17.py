@@ -1,3 +1,4 @@
+
 import zipfile
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,8 +11,77 @@ import tkinter as tk
 from tkinter import simpledialog, messagebox
 import Alpha11
 from Alpha11 import *
+import os
+from tkinter import Tk, filedialog
 
-# Read data from the CSV file and store it in a dictionary
+def list_xyz_files(directory):
+    """List all .xyz files in the given directory."""
+    return [f for f in os.listdir(directory) if f.endswith('.xyz')]
+
+def choose_file_menu(files):
+    """Create a simple Tkinter dialog to choose a file from the list."""
+    root = Tk()
+    root.withdraw()  # Hide the root window
+    root.attributes('-topmost', True)  # Bring the dialog to the front
+
+    # Create the menu string
+    menu_str = "\n".join([f"{i}: {file}" for i, file in enumerate(files)])
+    '''
+    # Prompt the user to choose a file by index
+    choice = simpledialog.askstring("Select a file", f"Choose a file by entering its index:\n{menu_str}")
+    
+    root.destroy()  # Close the Tkinter root window
+    
+    # Return the chosen index if it's valid
+    if choice is not None and choice.isdigit():
+        index = int(choice)
+        if 0 <= index < len(files):
+            return index
+    return None
+'''
+# Function to open file dialog and select a file
+def select_file():
+    directory = r"/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/extrctfolder/Optimized_structures_xyz"
+
+    root = Tk()
+    root.withdraw()  # Hide the root window
+    root.attributes('-topmost', True)  # Bring the file dialog to the front
+
+    file_path = filedialog.askopenfilename(
+        initialdir=directory,
+        title="Select a molecule file",
+        filetypes=(("XYZ files", ".xyz"), ("All files", ".*"))
+    )
+    root.destroy()  # Close the Tkinter root window
+
+    # Get the index of the selected file
+    if file_path:
+        files = [f for f in os.listdir(directory) if f.endswith('.xyz') and os.path.isfile(os.path.join(directory, f))]
+        print(files)
+        file_name = os.path.basename(file_path)
+        file_index = files.index(file_name) if file_name in files else -1
+        return file_path, file_index
+    else:
+        return None, -1
+'''
+# Check if a file was selected
+if selected_file:
+    cur_molecule = Molecule(selected_file)
+    atoms = cur_molecule.get_atoms()
+    print(atoms)
+else:
+    print("No file selected.")
+
+directory = r'/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/extrctfolder/Optimized_structures_xyz'
+
+# List all .xyz files in the directory
+xyz_files = list_xyz_files(directory)
+
+if xyz_files:
+    # Choose a file from the menu
+    chosen_index = choose_file_menu(xyz_files)
+    '''
+     #Read data from the CSV file and store it in a dictionary
 def read_element_data_from_csv(csv_file_path):
     element_data = {}
     with open(csv_file_path, 'r') as csv_file:
@@ -501,12 +571,13 @@ def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_
     return filtered_connections
 
 # Class to manage navigation
+# Class to manage navigation
 class Navigation:
-    def __init__(self, all_files, extracted_folder, element_data, num_atoms_to_pick):
+    def __init__(self, all_files, extracted_folder, element_data, num_atoms_to_pick, index=0):
         self.all_files = all_files
         self.extracted_folder = extracted_folder
         self.element_data = element_data
-        self.current_index = 0
+        self.current_index = index
         self.num_files = len(all_files)
         self.fig, self.ax = plt.subplots()
         self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
@@ -577,27 +648,35 @@ def ask_num_atoms():
     num_atoms = simpledialog.askinteger("Number of Atoms", "Enter the number of atoms you want to pick:")
     return num_atoms
 
+
+
 # Main function
-def main():
+def main ():
     # Path to the CSV file containing element data
-    csv_file_path = '/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/rsdii_table.csv'
+    csv_file_path ='/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/rsdii_table.csv'
     # Read element data from CSV
     element_data = read_element_data_from_csv(csv_file_path)
 
     # Path to the zip file containing XYZ data
-    zip_file_path = "/home/nati/Roni/Roni Alpha/Optimized_structures_xyz.zip"
-    extracted_folder = "/home/nati/Roni/Roni Alpha/extrctfolder/Optimized_structures_xyz"
+    zip_file_path = r"/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/Optimized_structures_xyz.zip"
+    extracted_folder = r"/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/extrctfolder/Optimized_structures_xyz"
 
     # Extract all files from the zip
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(extracted_folder)
 
-    all_files = os.listdir(extracted_folder)
+    all_files = [o for o in os.listdir(extracted_folder) if o[-4:]==".xyz"]
 
+    # Select the file
+    selected_file, selected_index = select_file()
+    print(selected_file)
+    directory = r"directory = r'/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/extrctfolder/Optimized_structures_xyz"
+    print(selected_index)
     # Ask for the number of atoms to pick
     num_atoms_to_pick = ask_num_atoms()
 
-    nav = Navigation(all_files, extracted_folder, element_data, num_atoms_to_pick)
+    nav = Navigation(all_files, extracted_folder, element_data, num_atoms_to_pick, index=selected_index)
+
 
     while True:
         if messagebox.askyesno("Continue", "Do you want to pick atoms in another molecule?"):
@@ -607,7 +686,7 @@ def main():
             nav.plot_current_molecule()  # Start the selection process
         else:
             break
-
+            
 # Entry point of the script
 if __name__ == "__main__":
     main()
