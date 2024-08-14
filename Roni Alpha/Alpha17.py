@@ -340,6 +340,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             # Visualize B1 and B5
             L = np.linalg.norm(atom2_coords - atom1_coords)
+            L_vector = atom2_coords - atom1_coords
             midpoint = (atom1_coords + atom2_coords) / 2
             B1 = sterimol_param['B1'].iloc[0]
             B5 = sterimol_param['B5'].iloc[0]
@@ -439,15 +440,30 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             perpendicular_vector = get_perpendicular_vector(direction_vector)
             perpendicular_vector *= B1 / 2  # Scale by B1/2 for visualization
-            
+            '''
             starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
             ending_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+            '''
+            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
+            ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
+                                     max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+            b5_vector = ending_point - starting_point
+            L_vector_normalized = L_vector / np.linalg.norm(L_vector)
+            projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
+            new_b5_vector = b5_vector - projection
+            new_ending_point = starting_point + new_b5_vector
 
-
+            # Plot the perpendicular vector
+            ax.plot([starting_point[0], new_ending_point[0]],
+                    [starting_point[1], new_ending_point[1]],
+                    [starting_point[2], new_ending_point[2]], color='green', linestyle='--')
+            
+            '''
             # Plot the perpendicular vector
             ax.plot([starting_point[0], ending_point[0]],
                     [starting_point[1], ending_point[1]],
                     [starting_point[2], ending_point[2]], color='green', linestyle='--')
+            '''
             
             # calculate things to prepare for b1 Calculation
 
