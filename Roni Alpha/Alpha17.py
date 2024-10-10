@@ -197,42 +197,15 @@ def my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
         b1s_xz.append(B1_xz)
 
     return b1s, b1s_loc, b1s_xz
-    '''
-def plot_vector_before_transformation(plane):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    
-    # Assuming the vectors are in the 'plane' array, and we're plotting from origin (0,0,0)
-    origin = [0, 0, 0]
-    ax.quiver(origin[0], origin[1], origin[2], plane[:, 0], plane[:, 1], plane[:, 2], color='r')
-    
-    ax.set_xlim([-5, 5])
-    ax.set_ylim([-5, 5])
-    ax.set_zlim([-5, 5])
 
-    plt.title("Vector Before Transformation")
-    plt.show()
-   '''
-# Now your function can use the plot_vector_before_transformation
+
 def my_get_b1s_list(extended_df, scans=90 // 5):
     b1s, b1s_loc = [], []
     scans = scans
     degree_list = list(range(18, 108, scans))
     plane = np.array(extended_df[['x', 'z']].astype(float))
-    print(f"Original plane vectors before transformation: {plane}")
-   # plot_vector_before_transformation(plane)
-
     b1, b1_loc, b1_xz = my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane)
-    '''
-    def my_get_b1s_list(extended_df, scans=90 // 5):
-        b1s, b1s_loc = [], []
-        scans = scans
-        degree_list = list(range(18, 108, scans))
-        plane = np.array(extended_df[['x', 'z']].astype(float))
-    
-        b1, b1_loc, b1_xz = my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane)
-    '''
+
     if b1s:
         try:
             back_ang = degree_list[np.where(b1s == min(b1s))[0][0]] - scans
@@ -520,7 +493,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
             b1_vector = b1_normalized_vector * b1
-            '''
+            #"""
             # Calculate start and end points of the perpendicular line
             start_point = midpoint
             end_point = start_point + b1_vector
@@ -529,7 +502,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                     [start_point[1], end_point[1]],
                     [start_point[2], end_point[2]], color='red', linestyle='--')
             '''
-            '''
+                    
             # Optionally, add an arrowhead for the purple line
             ax.quiver(start_point[0], start_point[1], start_point[2],
                       perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
