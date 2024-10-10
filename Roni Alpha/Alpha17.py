@@ -199,13 +199,15 @@ def my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
     return b1s, b1s_loc, b1s_xz
 
 
+        
 def my_get_b1s_list(extended_df, scans=90 // 5):
     b1s, b1s_loc = [], []
     scans = scans
     degree_list = list(range(18, 108, scans))
     plane = np.array(extended_df[['x', 'z']].astype(float))
     b1, b1_loc, b1_xz = my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane)
-
+    print(f"Original plane vectors before transformation: {plane}")
+    
     if b1s:
         try:
             back_ang = degree_list[np.where(b1s == min(b1s))[0][0]] - scans
