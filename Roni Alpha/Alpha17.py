@@ -366,15 +366,11 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             print(atom2_index)            
 
             # Visualize B1 and B5
-            L_vector = atom2_coords - atom1_coords
-            L_vector = L_vector / np.linalg.norm(L_vector)
             L = np.linalg.norm(atom2_coords - atom1_coords)
+            L_vector = atom2_coords - atom1_coords
             midpoint = (atom1_coords + atom2_coords) / 2
             B1 = sterimol_param['B1'].iloc[0]
             B5 = sterimol_param['B5'].iloc[0]
-            loc_B5 = sterimol_param['loc_B5'].iloc[0]
-            
-            # Filter atoms in the direction of the second atom
 
             # Filter atoms in the direction of the second atom
             bonds_df = cur_molecule.bonds_df
@@ -475,11 +471,12 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
             ending_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
             '''
-            starting_point = (atom1_coords + L_vector * loc_B5)  # Midpoint on the blue axis line
+            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
             ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
                                      max_projection_point['z']])  # Coordinates of the atom with the radius of 100
             b5_vector = ending_point - starting_point
-            projection = np.dot(b5_vector, L_vector) * L_vector
+            L_vector_normalized = L_vector / np.linalg.norm(L_vector)
+            projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
             new_b5_vector = b5_vector - projection
             new_ending_point = starting_point + new_b5_vector
 
