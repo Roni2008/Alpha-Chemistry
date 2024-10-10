@@ -597,13 +597,13 @@ class Navigation:
         self.element_data = element_data
         self.current_index = index
         self.num_files = len(all_files)
-        self.fig, self.ax = plt.subplots()
-        self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-        self.axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-        self.bnext = Button(self.axnext, 'Next')
-        self.bprev = Button(self.axprev, 'Previous')
-        self.bnext.on_clicked(self.next_molecule)
-        self.bprev.on_clicked(self.prev_molecule)
+        #self.fig, self.ax = plt.subplots()
+       # self.axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
+       # self.axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
+       # self.bnext = Button(self.axnext, 'Next')
+       # self.bprev = Button(self.axprev, 'Previous')
+       # self.bnext.on_clicked(self.next_molecule)
+       # self.bprev.on_clicked(self.prev_molecule)
         self.num_atoms_to_pick = num_atoms_to_pick
         self.selected_atoms = []  # Initialize the list of selected atoms
         self.list_number = 1  # Initialize list number
