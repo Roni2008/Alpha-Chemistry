@@ -349,7 +349,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             # Filter atoms in the direction of the second atom
             bonds_df = cur_molecule.bonds_df
-            """
+            
             base_atoms = get_sterimol_indices(coords_df, bonds_df)
             bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
             new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
@@ -361,7 +361,8 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             
             extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
             edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
-            """
+            
+            
             
             indices = gather_indices(filter_bonds(bonds_df, 2, 1))
             indices_zero_based = [idx - 1 for idx in indices]
@@ -490,19 +491,52 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             b1_xz = b1s_xz[b1_index]
             b1 = b1s[b1_index]
             b1_loc = b1s_loc[b1_index]
+            b1_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             print("b1:", b1, "b1_xz:", b1_xz, "b1_loc:", b1_loc)
+            
+                        
+            # Define the blue axis (new y-axis) as the vector between atom1_coords and atom2_coords
+            L_vector = atom2_coords - atom1_coords  # Blue axis
+            L_vector_normalized = L_vector / np.linalg.norm(L_vector)  # Normalize to make it a unit vector
 
+            # Project b1_loc onto the blue axis to find the starting point on the y-axis
+            b1_loc_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])  # Position of the B1 vector
+
+            # Find the projection of b1_loc onto the blue axis (y-axis)
+            projection_on_y_axis = atom1_coords + np.dot(b1_loc_vector - atom1_coords, L_vector_normalized) * L_vector_normalized
+
+            # Now calculate the perpendicular component of the B1 vector relative to the blue axis
+            projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized  # Part of B1 aligned with blue axis
+            perpendicular_b1_vector = b1_vector - projection  # Perpendicular part
+
+            # Plot the B1 vector, starting from the projection on the y-axis (along the blue line)
+            start_point = projection_on_y_axis  # This is now aligned with the blue axis
+            end_point = start_point + perpendicular_b1_vector  # End point of the B1 vector
+
+            # Plot the vector in green
+            ax.plot([start_point[0], end_point[0]],
+                    [start_point[1], end_point[1]],
+                    [start_point[2], end_point[2]], color='gray', linestyle='--')
+            '''
+                        # Assuming atom1_coords and atom2_coords define the blue line (new y-axis)
+            L_vector = atom2_coords - atom1_coords
+            L_vector_normalized = L_vector / np.linalg.norm(L_vector)
+
+            # Project b1_vector perpendicular to the blue line
+            projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
+            perpendicular_b1_vector = b1_vector - projection
+
+            # Plot the B1 vector in green
+            start_point = (atom1_coords + atom2_coords) / 2  # Midpoint of the blue axis line
+            end_point = start_point + perpendicular_b1_vector
+            ax.plot([start_point[0], end_point[0]],
+                    [start_point[1], end_point[1]],
+                    [start_point[2], end_point[2]], color='purple', linestyle='--')
+            
             b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
             b1_vector = b1_normalized_vector * b1
-            #"""
-            # Calculate start and end points of the perpendicular line
-            start_point = midpoint
-            end_point = start_point + b1_vector
-            # Plot the perpendicular vector
-            ax.plot([start_point[0], end_point[0]],
-                    [start_point[1], end_point[1]],
-                    [start_point[2], end_point[2]], color='red', linestyle='--')
+            '''
             '''
                     
             # Optionally, add an arrowhead for the purple line
@@ -547,6 +581,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
     # Scatter plot for atoms
     real_xyz_data = xyz_data
+   # real_xyz_data[[['x','y','z']]] = new_coordinates_df
     print(real_xyz_data)
     for i, coords in enumerate(xyz_data):
         element_info = element_data.get(atom_numbers[i])
@@ -572,7 +607,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
     ax.axis('off')  # Turn off axes
     plt.show()
 
-# Rest of the code remains the same
+
 # Function to remove violating connections
 def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance):
     # Create a list to store the filtered connections
