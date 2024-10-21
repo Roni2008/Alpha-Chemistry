@@ -349,7 +349,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             # Filter atoms in the direction of the second atom
             bonds_df = cur_molecule.bonds_df
-            
+            """
             base_atoms = get_sterimol_indices(coords_df, bonds_df)
             bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
             new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
@@ -361,8 +361,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             
             extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
             edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
-            
-            
+            """
             
             indices = gather_indices(filter_bonds(bonds_df, 2, 1))
             indices_zero_based = [idx - 1 for idx in indices]
@@ -494,8 +493,8 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             b1_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             print("b1:", b1, "b1_xz:", b1_xz, "b1_loc:", b1_loc)
             
-                        
-            # Define the blue axis (new y-axis) as the vector between atom1_coords and atom2_coords
+            
+                # Define the blue axis (new y-axis) as the vector between atom1_coords and atom2_coords
             L_vector = atom2_coords - atom1_coords  # Blue axis
             L_vector_normalized = L_vector / np.linalg.norm(L_vector)  # Normalize to make it a unit vector
 
@@ -517,7 +516,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             ax.plot([start_point[0], end_point[0]],
                     [start_point[1], end_point[1]],
                     [start_point[2], end_point[2]], color='gray', linestyle='--')
-            '''
+            
                         # Assuming atom1_coords and atom2_coords define the blue line (new y-axis)
             L_vector = atom2_coords - atom1_coords
             L_vector_normalized = L_vector / np.linalg.norm(L_vector)
@@ -525,19 +524,18 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             # Project b1_vector perpendicular to the blue line
             projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
             perpendicular_b1_vector = b1_vector - projection
-
-            # Plot the B1 vector in green
-            start_point = (atom1_coords + atom2_coords) / 2  # Midpoint of the blue axis line
-            end_point = start_point + perpendicular_b1_vector
-            ax.plot([start_point[0], end_point[0]],
-                    [start_point[1], end_point[1]],
-                    [start_point[2], end_point[2]], color='purple', linestyle='--')
-            
             b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
             b1_vector = b1_normalized_vector * b1
-            '''
-            '''
+            #"""
+            # Calculate start and end points of the perpendicular line
+            start_point = midpoint
+            end_point = start_point + b1_vector
+            # Plot the perpendicular vector
+            ax.plot([start_point[0], end_point[0]],
+                    [start_point[1], end_point[1]],
+                    [start_point[2], end_point[2]], color='red', linestyle='--')
+            
                     
             # Optionally, add an arrowhead for the purple line
             ax.quiver(start_point[0], start_point[1], start_point[2],
@@ -563,13 +561,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             """
             # Find the point with the maximum projection
-            max_projection_point = coords_df.loc[coords_df['Projection Magnitude'].idxmax()]
-            print("Farthest",(max_projection_point))
+           # max_projection_point = coords_df.loc[coords_df['Projection Magnitude'].idxmax()]
+           # print("Farthest",(max_projection_point))
 
-            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='yellow', s=4 ** 4, picker=True)
-            """
+          #  ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='yellow', s=4 ** 4, picker=True)
+            
 
-           '''
+           
 
         # If all atoms are selected, display the list of selected atom positions
         if len(nav.selected_atoms) == nav.num_atoms_to_pick:
@@ -580,8 +578,32 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             nav.selected_atoms.clear()
 
     # Scatter plot for atoms
+    coords_df1  = get_df_from_file(file_path)  
+    
+    bonds_df1 = cur_molecule.bonds_df
+
+    base_atoms1 = get_sterimol_indices(coords_df1, bonds_df1)
+    bonds_direction1 = direction_atoms_for_sterimol(bonds_df1, base_atoms1)
+    new_coordinates_df1 = preform_coordination_transformation(coords_df1, bonds_direction1)
+
+    connected_from_direction1 = get_molecule_connections(bonds_df1, base_atoms1[0], base_atoms1[1])
+    bonded_atoms_df1 = get_specific_bonded_atoms_df(bonds_df1, connected_from_direction1, new_coordinates_df1)
+
+    extended_df1 = get_extended_df_for_sterimol(new_coordinates_df1, bonds_df1, 'blue')
+    edited_coords1 = filter_atoms_for_sterimol(bonded_atoms_df1, coords_df1)
+
+    # Edited coordinates
+    edited_coordinates_df1 = filter_atoms_for_sterimol(bonded_atoms_df1, extended_df1)
+    
+    # Scatter plot for atoms
+    print("world xyz")
+    print(xyz_data)
+    print(type(xyz_data))
+    xyz_data = edited_coordinates_df1[['x', 'y', 'z']].to_numpy()
     real_xyz_data = xyz_data
+
    # real_xyz_data[[['x','y','z']]] = new_coordinates_df
+
     print(real_xyz_data)
     for i, coords in enumerate(xyz_data):
         element_info = element_data.get(atom_numbers[i])
@@ -607,7 +629,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
     ax.axis('off')  # Turn off axes
     plt.show()
 
-
+# Rest of the code remains the same
 # Function to remove violating connections
 def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance):
     # Create a list to store the filtered connections
