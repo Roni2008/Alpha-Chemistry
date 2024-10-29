@@ -454,11 +454,32 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
             new_b5_vector = b5_vector - projection
             new_ending_point = starting_point + new_b5_vector
-
+            '''
             # Plot the perpendicular vector
             ax.plot([starting_point[0], new_ending_point[0]],
                     [starting_point[1], new_ending_point[1]],
                     [starting_point[2], new_ending_point[2]], color='green', linestyle='--')
+            '''
+            B5_loc = sterimol_param['loc_B5'].iloc[0]
+            start_point_B5 = atom1_coords + B5_loc * direction_vector
+
+            # Define a perpendicular direction vector for B1 line
+            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
+            # (you may already have this calculation in place; otherwise, compute it)
+            perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
+            perpendicular_direction /= np.linalg.norm(perpendicular_direction)
+
+            # Calculate the end point of the B1 line
+            end_point_B5 = start_point_B5 + b5_vector
+
+            # Draw the B1 line in red
+            ax.plot([start_point_B5[0], end_point_B5[0]],
+                    [start_point_B5[1], end_point_B5[1]],
+                    [start_point_B5[2], end_point_B5[2]], color='green', linestyle='--')
+            
+            
+            
+           
             
             '''
             # Plot the perpendicular vector
@@ -528,13 +549,34 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
             b1_vector = b1_normalized_vector * b1
             #"""
+            '''
             # Calculate start and end points of the perpendicular line
             start_point = midpoint
             end_point = start_point + b1_vector
+            
             # Plot the perpendicular vector
             ax.plot([start_point[0], end_point[0]],
                     [start_point[1], end_point[1]],
                     [start_point[2], end_point[2]], color='red', linestyle='--')
+            '''
+            B1_loc = sterimol_param['loc_B1'].iloc[0]
+           
+            # Calculate the starting point along the blue line at B1_loc distance
+            start_point_B1 = atom1_coords + B1_loc * direction_vector
+
+            # Define a perpendicular direction vector for B1 line
+            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
+            # (you may already have this calculation in place; otherwise, compute it)
+            perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
+            perpendicular_direction /= np.linalg.norm(perpendicular_direction)
+
+            # Calculate the end point of the B1 line
+            end_point_B1 = start_point_B1 + b1_vector
+
+            # Draw the B1 line in red
+            ax.plot([start_point_B1[0], end_point_B1[0]],
+                    [start_point_B1[1], end_point_B1[1]],
+                    [start_point_B1[2], end_point_B1[2]], color='red', linestyle='--')
             
                     
             # Optionally, add an arrowhead for the purple line
