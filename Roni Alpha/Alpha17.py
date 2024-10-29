@@ -430,7 +430,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             max_projection_point = edited_coordinates.loc[edited_coordinates['Projection Magnitude'].idxmax()]
 
-            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='red', s=(radius * 100), picker=True)
+            #ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='red', s=(radius * 100), picker=True)
                     # Calculate a perpendicular vector to the blue axis
             def get_perpendicular_vector(direction_vector):
                 if not np.allclose(direction_vector, [0, 0, 1]):
@@ -511,7 +511,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             # Plot the B1 vector, starting from the projection on the y-axis (along the blue line)
             start_point = projection_on_y_axis  # This is now aligned with the blue axis
             end_point = start_point + perpendicular_b1_vector  # End point of the B1 vector
-
+            '''
             # Plot the vector in green
             ax.plot([start_point[0], end_point[0]],
                     [start_point[1], end_point[1]],
@@ -520,7 +520,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                         # Assuming atom1_coords and atom2_coords define the blue line (new y-axis)
             L_vector = atom2_coords - atom1_coords
             L_vector_normalized = L_vector / np.linalg.norm(L_vector)
-
+            '''
             # Project b1_vector perpendicular to the blue line
             projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
             perpendicular_b1_vector = b1_vector - projection
