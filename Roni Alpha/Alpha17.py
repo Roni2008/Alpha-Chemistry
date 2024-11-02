@@ -142,6 +142,7 @@ def my_calc_B1(transformed_plane, avs, edited_coordinates_df, column_index):
             B1_loc.append(edited_coordinates_df['radius'].iloc[idx])
 
     # print(f'B1: {B1}, B1_loc: {B1_loc}')
+    
     return [B1, B1_loc, transformed_plane[idx]]
 
 

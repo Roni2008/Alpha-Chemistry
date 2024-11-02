@@ -770,6 +770,8 @@ def get_transfomed_plane_for_sterimol(plane,degree):
     sin_deg=np.sin(degree*(np.pi/180))
     rot_matrix=np.array([[cos_deg,-1*sin_deg],[sin_deg,cos_deg]])
     transformed_plane=np.vstack([np.matmul(rot_matrix,row) for row in plane]).round(4)
+    print("transformed plane")
+    print(transformed_plane)
     return transformed_plane
 
 
@@ -930,7 +932,8 @@ def get_sterimol_df(coordinates_df, bonds_df, base_atoms, connected_from_directi
     extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, radii)
     # print(f'extended dataframe: {extended_df}')
     ###calculations
-    
+    print("new coords df")
+    print(new_coordinates_df)
     sterimol_df = calc_sterimol(bonded_atoms_df, extended_df)
     sterimol_df= sterimol_df.rename(index={0: str(base_atoms[0]) + '-' + str(base_atoms[1])})
     sterimol_df=sterimol_df.round(2)
@@ -1127,7 +1130,7 @@ def main():
     
     os.chdir(r'/home/nati/Roni/Roni Alpha/Optimized_structures_xyz')
     mols=Molecules(os.getcwd())
-    x=mols.get_sterimol_dict([41,7])
+    x=mols.get_sterimol_dict([4,7])
     pprint.pprint(x)
     
 if __name__ == "__main__":
