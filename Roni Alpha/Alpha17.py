@@ -13,6 +13,30 @@ import Alpha11
 from Alpha11 import *
 import os
 from tkinter import Tk, filedialog
+import networkx as nx
+
+def get_connected_nodes(bonds_df, from_node, to_node):
+    # Create a graph from the DataFrame
+    G = nx.from_pandas_edgelist(bonds_df, 0, 1)  # Assuming columns 0 and 1 are the node pairings
+    
+    # Perform a BFS starting from the to_node, but avoiding from_node
+    connected = set()
+    queue = [to_node]
+    visited = set([from_node])  # Start with the from_node to avoid it in the traversal
+    
+    while queue:
+        current_node = queue.pop(0)
+        if current_node in visited:
+            continue
+        visited.add(current_node)
+        
+        for neighbor in G.neighbors(current_node):
+            if neighbor not in visited:
+                connected.add(neighbor)
+                queue.append(neighbor)
+    
+    # Return the set of connected nodes excluding from_node itself
+    return connected
 
 def list_xyz_files(directory):
     """List all .xyz files in the given directory."""
@@ -425,13 +449,6 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                 return H - P
 
 
-            edited_coordinates['Projection Magnitude'] = edited_coordinates.apply(
-                lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
-            )
-
-            max_projection_point = edited_coordinates.loc[edited_coordinates['Projection Magnitude'].idxmax()]
-
-            #ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='red', s=(radius * 100), picker=True)
                     # Calculate a perpendicular vector to the blue axis
             def get_perpendicular_vector(direction_vector):
                 if not np.allclose(direction_vector, [0, 0, 1]):
@@ -447,38 +464,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
             ending_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
             '''
-            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
-            ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
-                                     max_projection_point['z']])  # Coordinates of the atom with the radius of 100
-            b5_vector = ending_point - starting_point
-            L_vector_normalized = L_vector / np.linalg.norm(L_vector)
-            projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
-            new_b5_vector = b5_vector - projection
-            new_ending_point = starting_point + new_b5_vector
+            
             '''
             # Plot the perpendicular vector
             ax.plot([starting_point[0], new_ending_point[0]],
                     [starting_point[1], new_ending_point[1]],
                     [starting_point[2], new_ending_point[2]], color='green', linestyle='--')
             '''
-            B5_loc = sterimol_param['loc_B5'].iloc[0]
-            start_point_B5 = atom1_coords + B5_loc * direction_vector
-
-            # Define a perpendicular direction vector for B1 line
-            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
-            # (you may already have this calculation in place; otherwise, compute it)
-            perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
-            perpendicular_direction /= np.linalg.norm(perpendicular_direction)
-
-            # Calculate the end point of the B1 line
-            end_point_B5 = start_point_B5 + b5_vector
-
-            # Draw the B1 line in red
-            ax.plot([start_point_B5[0], end_point_B5[0]],
-                    [start_point_B5[1], end_point_B5[1]],
-                    [start_point_B5[2], end_point_B5[2]], color='green', linestyle='--')
-            
-            
             
            
             
@@ -514,6 +506,72 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             b1_loc = b1s_loc[b1_index]
             b1_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             print("b1:", b1, "b1_xz:", b1_xz, "b1_loc:", b1_loc)
+            
+            coords_df = get_df_from_file(file_path)
+            bonds_df = cur_molecule.bonds_df
+            print("bonds_df")
+            print(type(bonds_df))
+            print(bonds_df)
+            filter_indices=list(get_connected_nodes(bonds_df ,atom1_index+1 ,atom2_index+1))+[atom1_index+1 ,atom2_index+1]
+            filter_indices = [num - 1 for num in filter_indices]
+            filtered_df = edited_coordinates_df.loc[filter_indices]
+            
+            
+            for _, row in filtered_df.iterrows():
+                # Extract x, y, z values
+                x, y, z = row['x'], row['y'], row['z']
+                # Scatter each point with a yellow color and a radius of 2
+                ax.scatter(x, y, z, color='yellow', s=100)
+                
+            
+            
+            edited_coordinates_df['Projection Magnitude'] = edited_coordinates_df.apply(
+                lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
+            )
+
+            max_projection_point = edited_coordinates_df.loc[edited_coordinates_df['Projection Magnitude'].idxmax()]
+
+            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='green', s=(radius * 100), picker=True)
+            
+            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
+            ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
+                                     max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+            b5_vector = ending_point - starting_point
+            L_vector_normalized = L_vector / np.linalg.norm(L_vector)
+            projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
+            new_b5_vector = b5_vector - projection
+            new_ending_point = starting_point + new_b5_vector
+            B5_loc = sterimol_param['loc_B5'].iloc[0]
+            start_point_B5 = atom1_coords + B5_loc * direction_vector
+            
+            # Filter points where Projection Magnitude is greater than 0
+            points_above_zero = edited_coordinates_df[edited_coordinates_df['Projection Magnitude'] > 0]
+
+            # Plot all points where Projection Magnitude is greater than 0
+            ax.scatter(
+                points_above_zero['x'], 
+                points_above_zero['y'], 
+                points_above_zero['z'], 
+                c='blue',  # Choose a color for these points
+                s=20,      # Set the size of each point
+                picker=True
+            )
+
+            # Define a perpendicular direction vector for B1 line
+            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
+            # (you may already have this calculation in place; otherwise, compute it)
+            perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
+            perpendicular_direction /= np.linalg.norm(perpendicular_direction)
+
+            # Calculate the end point of the B1 line
+            end_point_B5 = start_point_B5 + b5_vector
+
+            # Draw the B1 line in red
+            ax.plot([start_point_B5[0], end_point_B5[0]],
+                    [start_point_B5[1], end_point_B5[1]],
+                    [start_point_B5[2], end_point_B5[2]], color='green', linestyle='--')
+            
+            
             
             
                 # Define the blue axis (new y-axis) as the vector between atom1_coords and atom2_coords
