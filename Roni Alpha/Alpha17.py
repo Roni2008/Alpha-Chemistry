@@ -15,6 +15,43 @@ import os
 from tkinter import Tk, filedialog
 import networkx as nx
 
+# Define the function to find the point with the maximum distance from a line defined by points A and B
+def find_point_with_max_distance_from_line(df, A_coords, B_coords):
+    """
+    Find the point in the dataframe that has the maximum perpendicular distance from a line defined by points A and B.
+    
+    Parameters:
+    - df (pd.DataFrame): DataFrame containing 'x', 'y', 'z' columns (and possibly others).
+    - A_coords (tuple or list): Coordinates of point A (Ax, Ay, Az).
+    - B_coords (tuple or list): Coordinates of point B (Bx, By, Bz).
+    
+    Returns:
+    - max_distance_point (pd.Series): Row with the point having the maximum distance, including its coordinates and distance.
+    """
+    # Convert A and B coordinates to numpy arrays
+    A = np.array(A_coords)
+    B = np.array(B_coords)
+    
+    # Calculate the direction vector from A to B and normalize it
+    AB = B - A
+    AB_direction = AB / np.linalg.norm(AB)  # Unit vector along line A-B
+
+    # Function to calculate the perpendicular distance from a point to line A-B
+    def perpendicular_distance(point):
+        AP = point - A  # Vector from A to the point
+        projection_length = np.dot(AP, AB_direction)  # Length of projection onto AB_direction
+        projection_point = A + projection_length * AB_direction  # Closest point on the line
+        perpendicular_vector = point - projection_point  # Vector from line to point
+        return np.linalg.norm(perpendicular_vector)  # Distance (magnitude of perpendicular vector)
+
+    # Apply the function to each point in the dataframe to calculate distances
+    df['distance'] = df.apply(lambda row: perpendicular_distance(np.array([row['x'], row['y'], row['z']])), axis=1)
+
+    # Find the point with the maximum distance
+    max_distance_point = df.loc[df['distance'].idxmax()]
+    
+    return max_distance_point
+
 def get_connected_nodes(bonds_df, from_node, to_node):
     # Create a graph from the DataFrame
     G = nx.from_pandas_edgelist(bonds_df, 0, 1)  # Assuming columns 0 and 1 are the node pairings
@@ -462,58 +499,34 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                 # Extract x, y, z values
                 x, y, z = row['x'], row['y'], row['z']
                 # Scatter each point with a yellow color and a radius of 2
-                ax.scatter(x, y, z, color='yellow', s=100)
+                
                 
             
             
-            edited_coordinates_df['Projection Magnitude'] = edited_coordinates_df.apply(
+            filtered_df['Projection Magnitude'] = filtered_df.apply(
                 lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
             )
 
-            max_projection_point = edited_coordinates_df.loc[edited_coordinates_df['Projection Magnitude'].idxmax()]
-
-            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='green', s=(radius * 100), picker=True)
+            max_projection_point = filtered_df.loc[filtered_df['Projection Magnitude'].idxmax()]
             
-            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
-            ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
-                                     max_projection_point['z']])  # Coordinates of the atom with the radius of 100
-            b5_vector = ending_point - starting_point
+            max_projection_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])
+
+            #ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='green', s=(radius * 100), picker=True)
             L_vector_normalized = L_vector / np.linalg.norm(L_vector)
-            projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
-            new_b5_vector = b5_vector - projection
-            new_ending_point = starting_point + new_b5_vector
             B5_loc = sterimol_param['loc_B5'].iloc[0]
-            start_point_B5 = atom1_coords + B5_loc * direction_vector
-            
-            # Filter points where Projection Magnitude is greater than 0
-            points_above_zero = edited_coordinates_df[edited_coordinates_df['Projection Magnitude'] > 0]
+            b5_start_point=atom1_coords+L_vector_normalized*B5_loc
+            b5_proj_vec=max_projection_point-atom1_coords
+            b5_proj_len = np.dot(max_projection_point, L_vector_normalized)
+            b5_proj_point = atom1_coords + b5_proj_len * L_vector_normalized
 
-            # Plot all points where Projection Magnitude is greater than 0
-            ax.scatter(
-                points_above_zero['x'], 
-                points_above_zero['y'], 
-                points_above_zero['z'], 
-                c='blue',  # Choose a color for these points
-                s=20,      # Set the size of each point
-                picker=True
-            )
-
-            # Define a perpendicular direction vector for B1 line
-            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
-            # (you may already have this calculation in place; otherwise, compute it)
-            perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
-            perpendicular_direction /= np.linalg.norm(perpendicular_direction)
-
-            # Calculate the end point of the B1 line
-            end_point_B5 = start_point_B5 + b5_vector
+            b5_perp_vec = max_projection_point - b5_proj_point
+            b5_end_point = b5_start_point + b5_perp_vec
+          
 
             # Draw the B1 line in red
-            ax.plot([start_point_B5[0], end_point_B5[0]],
-                    [start_point_B5[1], end_point_B5[1]],
-                    [start_point_B5[2], end_point_B5[2]], color='green', linestyle='--')
-            
-            
-            
+            ax.plot([b5_start_point[0], b5_end_point[0]],
+                    [b5_start_point[1], b5_end_point[1]],
+                    [b5_start_point[2], b5_end_point[2]], color='green', linestyle='--')
             
                 # Define the blue axis (new y-axis) as the vector between atom1_coords and atom2_coords
             L_vector = atom2_coords - atom1_coords  # Blue axis
