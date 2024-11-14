@@ -770,8 +770,8 @@ def get_transfomed_plane_for_sterimol(plane,degree):
     sin_deg=np.sin(degree*(np.pi/180))
     rot_matrix=np.array([[cos_deg,-1*sin_deg],[sin_deg,cos_deg]])
     transformed_plane=np.vstack([np.matmul(rot_matrix,row) for row in plane]).round(4)
-    print("transformed plane")
-    print(transformed_plane)
+   # print("transformed plane")
+    #print(transformed_plane)
     return transformed_plane
 
 

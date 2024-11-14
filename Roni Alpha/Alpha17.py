@@ -34,35 +34,25 @@ def get_connected_nodes(bonds_df, from_node, to_node):
             if neighbor not in visited:
                 connected.add(neighbor)
                 queue.append(neighbor)
-    
+     
     # Return the set of connected nodes excluding from_node itself
+    print("connected")
+    print(connected)
     return connected
-
+   
 def list_xyz_files(directory):
-    """List all .xyz files in the given directory."""
+    #List all .xyz files in the given directory.
     return [f for f in os.listdir(directory) if f.endswith('.xyz')]
 
 def choose_file_menu(files):
-    """Create a simple Tkinter dialog to choose a file from the list."""
+    #Create a simple Tkinter dialog to choose a file from the list.
     root = Tk()
     root.withdraw()  # Hide the root window
     root.attributes('-topmost', True)  # Bring the dialog to the front
 
     # Create the menu string
     menu_str = "\n".join([f"{i}: {file}" for i, file in enumerate(files)])
-    '''
-    # Prompt the user to choose a file by index
-    choice = simpledialog.askstring("Select a file", f"Choose a file by entering its index:\n{menu_str}")
     
-    root.destroy()  # Close the Tkinter root window
-    
-    # Return the chosen index if it's valid
-    if choice is not None and choice.isdigit():
-        index = int(choice)
-        if 0 <= index < len(files):
-            return index
-    return None
-'''
 # Function to open file dialog and select a file
 def select_file():
     directory = r"/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/extrctfolder/Optimized_structures_xyz"
@@ -87,24 +77,7 @@ def select_file():
         return file_path, file_index
     else:
         return None, -1
-'''
-# Check if a file was selected
-if selected_file:
-    cur_molecule = Molecule(selected_file)
-    atoms = cur_molecule.get_atoms()
-    print(atoms)
-else:
-    print("No file selected.")
 
-directory = r'/home/nati/Documents/GitHub/Alpha-Chemistry-UI/Roni Alpha/extrctfolder/Optimized_structures_xyz'
-
-# List all .xyz files in the directory
-xyz_files = list_xyz_files(directory)
-
-if xyz_files:
-    # Choose a file from the menu
-    chosen_index = choose_file_menu(xyz_files)
-    '''
      #Read data from the CSV file and store it in a dictionary
 def read_element_data_from_csv(csv_file_path):
     element_data = {}
@@ -165,17 +138,13 @@ def my_calc_B1(transformed_plane, avs, edited_coordinates_df, column_index):
             B1.append(np.abs(transformed_plane[idx, column_index] + edited_coordinates_df['radius'].iloc[idx]))
             B1_loc.append(edited_coordinates_df['radius'].iloc[idx])
 
-    # print(f'B1: {B1}, B1_loc: {B1_loc}')
+    
     
     return [B1, B1_loc, transformed_plane[idx]]
 
 
 def my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
     """
-    a function that gets a plane transform it and calculate the b1s for each degree.
-    checks if the plane is in the x or z axis and calculates the b1s accordingly.
-    Parameters:
-    ----------
     extended_df : pd.DataFrame
     b1s : list
     b1s_loc : list
@@ -223,8 +192,7 @@ def my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
 
     return b1s, b1s_loc, b1s_xz
 
-
-        
+#a function to get b1s
 def my_get_b1s_list(extended_df, scans=90 // 5):
     b1s, b1s_loc = [], []
     scans = scans
@@ -273,14 +241,6 @@ atom_names_to_numbers = {
 }
 
 def filter_bonds(bonds_df, atom1_index, atom2_index):
-    """
-    Removes all connections of atom1 except for its connection with atom2.
-    This is done iteratively, ensuring no indirect connections remain.
-    :param bonds_df: DataFrame of bonds where columns are 0 and 1
-    :param atom1_index: The atom index from which to remove connections
-    :param atom2_index: The atom index to preserve the connection with
-    :return: DataFrame of filtered bonds
-    """
     def remove_connections(bonds_df, atom1, atom2):
         # Find all connections of atom1
         connections = bonds_df[(bonds_df[0] == atom1) | (bonds_df[1] == atom1)]
@@ -375,6 +335,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             # Filter atoms in the direction of the second atom
             bonds_df = cur_molecule.bonds_df
             """
+            ask itay promisin to delete
             base_atoms = get_sterimol_indices(coords_df, bonds_df)
             bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
             new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
@@ -393,13 +354,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             edited_coordinates = coords_df.iloc[indices_zero_based]
             edited_coordinates['Original_Index'] = indices
             
-#            for index, coord in edited_coordinates.iterrows():
-#                ax.scatter(coord['x'], coord['y'], coord['z'], c='green', s=3 ** 4, picker=True)
+
             
             A = np.array([atom1_coords[0], atom1_coords[1], atom1_coords[2]])
             B = np.array([atom2_coords[0], atom2_coords[1], atom2_coords[2]])
 
             """
+            ask itay
             # Function to project a point onto the line
             def get_project_magniute(P, A, B):
                             
@@ -460,29 +421,9 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             perpendicular_vector = get_perpendicular_vector(direction_vector)
             perpendicular_vector *= B1 / 2  # Scale by B1/2 for visualization
-            '''
-            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
-            ending_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])  # Coordinates of the atom with the radius of 100
-            '''
-            
-            '''
-            # Plot the perpendicular vector
-            ax.plot([starting_point[0], new_ending_point[0]],
-                    [starting_point[1], new_ending_point[1]],
-                    [starting_point[2], new_ending_point[2]], color='green', linestyle='--')
-            '''
-            
            
-            
-            '''
-            # Plot the perpendicular vector
-            ax.plot([starting_point[0], ending_point[0]],
-                    [starting_point[1], ending_point[1]],
-                    [starting_point[2], ending_point[2]], color='green', linestyle='--')
-            '''
-            
+    
             # calculate things to prepare for b1 Calculation
-
             base_atoms = get_sterimol_indices(coords_df, bonds_df)
 
             bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
@@ -591,33 +532,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             # Plot the B1 vector, starting from the projection on the y-axis (along the blue line)
             start_point = projection_on_y_axis  # This is now aligned with the blue axis
             end_point = start_point + perpendicular_b1_vector  # End point of the B1 vector
-            '''
-            # Plot the vector in green
-            ax.plot([start_point[0], end_point[0]],
-                    [start_point[1], end_point[1]],
-                    [start_point[2], end_point[2]], color='gray', linestyle='--')
-            
-                        # Assuming atom1_coords and atom2_coords define the blue line (new y-axis)
-            L_vector = atom2_coords - atom1_coords
-            L_vector_normalized = L_vector / np.linalg.norm(L_vector)
-            '''
+           
             # Project b1_vector perpendicular to the blue line
             projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
             perpendicular_b1_vector = b1_vector - projection
             b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
             b1_vector = b1_normalized_vector * b1
-            #"""
-            '''
-            # Calculate start and end points of the perpendicular line
-            start_point = midpoint
-            end_point = start_point + b1_vector
-            
-            # Plot the perpendicular vector
-            ax.plot([start_point[0], end_point[0]],
-                    [start_point[1], end_point[1]],
-                    [start_point[2], end_point[2]], color='red', linestyle='--')
-            '''
             B1_loc = sterimol_param['loc_B1'].iloc[0]
            
             # Calculate the starting point along the blue line at B1_loc distance
@@ -642,31 +563,6 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             ax.quiver(start_point[0], start_point[1], start_point[2],
                       perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
                       length=0.1, color='red', arrow_length_ratio=0.2)
-            """
-
-
-            # Calculate start and end points of the perpendicular line
-            start_point = midpoint
-            end_point = start_point + perpendicular_vector
-
-            # Plot the perpendicular vector
-            ax.plot([start_point[0], end_point[0]],
-                    [start_point[1], end_point[1]],
-                    [start_point[2], end_point[2]], color='purple', linestyle='--')
-
-            # Optionally, add an arrowhead for the purple line
-            ax.quiver(start_point[0], start_point[1], start_point[2],
-                    perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
-                    length=0.1, color='purple', arrow_length_ratio=0.2)
-
-
-            """
-            # Find the point with the maximum projection
-           # max_projection_point = coords_df.loc[coords_df['Projection Magnitude'].idxmax()]
-           # print("Farthest",(max_projection_point))
-
-          #  ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='yellow', s=4 ** 4, picker=True)
-            
 
            
 
