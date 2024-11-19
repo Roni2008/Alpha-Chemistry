@@ -639,6 +639,105 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
     ax.axis('off')  # Turn off axes
     plt.show()
 
+def transform_coordinates_b1_vector(filtered_df, atom1_index, atom2_index):
+    """Transform points to align selected points with new axes."""
+    # Translate so that idx1 is the origin
+    origin = points[idx1]
+    translated_points = points - origin
+
+    # Vector from idx1 to idx2
+    target_vector = translated_points[idx2]
+
+    # Normalize the target vector
+    target_vector = target_vector / np.linalg.norm(target_vector)
+
+    # Construct the rotation matrix to align target_vector with Z-axis
+    z_axis = np.array([0, 0, 1])
+    v = np.cross(target_vector, z_axis)
+    c = np.dot(target_vector, z_axis)
+    s = np.linalg.norm(v)
+    if s == 0:  # If the vectors are already aligned
+        rotation_matrix = np.eye(3)
+    else:
+        vx = np.array([
+            [0, -v[2], v[1]],
+            [v[2], 0, -v[0]],
+            [-v[1], v[0], 0]
+        ])
+        rotation_matrix = np.eye(3) + vx + np.dot(vx, vx) * ((1 - c) / (s ** 2))
+
+    # Apply rotation
+    rotated_points = np.dot(translated_points, rotation_matrix.T)
+
+    # Compute inverse rotation matrix
+    inverse_rotation = rotation_matrix.T
+    return rotated_points, origin, inverse_rotation
+
+def inverse_transform_b1_vector(points, origin, inverse_rotation):
+    """Transform points back to the original 3D coordinates."""
+    rotated_back_points = np.dot(points, inverse_rotation)
+    return rotated_back_points + origin
+
+def calculate_heights_b1_vector(origin, points, hull):
+    """Calculate heights from the origin to each edge of the convex hull."""
+    edges = hull.simplices  # Edges of the convex hull
+    heights = []
+
+    for edge in edges:
+        # Points defining the edge
+        p1 = points[edge[0]]
+        p2 = points[edge[1]]
+
+        # Vector along the edge
+        edge_vector = p2 - p1
+
+        # Vector from origin to one point on the edge
+        origin_vector = -p1
+
+        # Compute the perpendicular distance from origin to the edge
+        height_vector = origin_vector - np.dot(origin_vector, edge_vector) / np.dot(edge_vector, edge_vector) * edge_vector
+        height = np.linalg.norm(height_vector)
+
+        # Midpoint of the edge (for visualization)
+        midpoint = (p1 + p2) / 2
+        heights.append((height, midpoint, p1, p2))
+        
+    print("heights")
+    print(heights)
+    return heights
+    
+def plot_heights_3d(ax, heights, origin, inverse_rotation):
+    
+    """Plot heights from the origin to each edge in the original 3D coordinates."""
+    # Find the shortest height
+    shortest_height = min(heights, key=lambda h: h[0])
+
+    for height, midpoint, p1, p2 in heights:
+        color = "blue" 
+        p1_original = inverse_transform_b1_vector(p1.reshape(1, -1), origin, inverse_rotation)[0]
+        p2_original = inverse_transform_b1_vector(p2.reshape(1, -1), origin, inverse_rotation)[0]
+        midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
+
+        ax.plot([p1_original[0], p2_original[0]], [p1_original[1], p2_original[1]], [p1_original[2], p2_original[2]], color="black")
+        ax.plot([origin[0], midpoint_original[0]], [origin[1], midpoint_original[1]], [origin[2], midpoint_original[2]], color=color)
+
+def get_b1_vector(atoms, idx1, idx2):
+
+    # Transform the coordinates
+    transformed_points, origin, inverse_rotation = transform_coordinates_b1_vector(points, idx1, idx2)
+
+    # Compute convex hull and heights
+    hull = ConvexHull(transformed_points[:, :2])
+    heights = calculate_heights_b1_vector(np.array([0, 0, 0]), transformed_points, hull)
+
+    shortest_height = min(heights, key=lambda h: h[0])
+    height = shortest_height[0]
+    midpoint = shortest_height[1]
+    midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
+    
+    return origin, midpoint_original    
+    b1_vector = midpoint_original- origin
+    
 # Rest of the code remains the same
 # Function to remove violating connections
 def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance):
