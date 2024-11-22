@@ -932,8 +932,8 @@ def get_sterimol_df(coordinates_df, bonds_df, base_atoms, connected_from_directi
     extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, radii)
     # print(f'extended dataframe: {extended_df}')
     ###calculations
-    print("new coords df")
-    print(new_coordinates_df)
+   # print("new coords df")
+   # print(new_coordinates_df)
     sterimol_df = calc_sterimol(bonded_atoms_df, extended_df)
     sterimol_df= sterimol_df.rename(index={0: str(base_atoms[0]) + '-' + str(base_atoms[1])})
     sterimol_df=sterimol_df.round(2)

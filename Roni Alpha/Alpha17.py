@@ -14,6 +14,7 @@ from Alpha11 import *
 import os
 from tkinter import Tk, filedialog
 import networkx as nx
+from scipy.spatial import ConvexHull
 
 # Define the function to find the point with the maximum distance from a line defined by points A and B
 def find_point_with_max_distance_from_line(df, A_coords, B_coords):
@@ -482,8 +483,9 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             b1_xz = b1s_xz[b1_index]
             b1 = b1s[b1_index]
             b1_loc = b1s_loc[b1_index]
-            b1_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
-            print("b1:", b1, "b1_xz:", b1_xz, "b1_loc:", b1_loc)
+            #b1_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
+            
+           # print("b1:", b1, "b1_xz:", b1_xz, "b1_loc:", b1_loc)
             
             coords_df = get_df_from_file(file_path)
             bonds_df = cur_molecule.bonds_df
@@ -493,8 +495,81 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             filter_indices=list(get_connected_nodes(bonds_df ,atom1_index+1 ,atom2_index+1))+[atom1_index+1 ,atom2_index+1]
             filter_indices = [num - 1 for num in filter_indices]
             filtered_df = edited_coordinates_df.loc[filter_indices]
+            idx1 = atom1_index
+            idx2 = atom2_index
+            atoms= filtered_df
+            b1_vector=get_b1_vector(atoms, idx1, idx2)
             
+            def transform_coordinates_b1_vector(filtered_df, atom1_index, atom2_index):
+                """Transform points to align selected points with new axes."""
+                # Translate so that idx1 is the origin
+                points = filtered_df[["x", "y", "z"]].to_numpy()
+                idx1 = atom1_index
+                idx2 = atom2_index
+                origin = points[idx1]
+                translated_points = points - origin
             
+                # Vector from idx1 to idx2
+                target_vector = translated_points[idx2]
+            
+                # Normalize the target vector
+                target_vector = target_vector / np.linalg.norm(target_vector)
+            
+                # Construct the rotation matrix to align target_vector with Z-axis
+                z_axis = np.array([0, 0, 1])
+                v = np.cross(target_vector, z_axis)
+                c = np.dot(target_vector, z_axis)
+                s = np.linalg.norm(v)
+                if s == 0:  # If the vectors are already aligned
+                    rotation_matrix = np.eye(3)
+                else:
+                    vx = np.array([
+                        [0, -v[2], v[1]],
+                        [v[2], 0, -v[0]],
+                        [-v[1], v[0], 0]
+                    ])
+                    rotation_matrix = np.eye(3) + vx + np.dot(vx, vx) * ((1 - c) / (s ** 2))
+            
+                # Apply rotation
+                rotated_points = np.dot(translated_points, rotation_matrix.T)
+            
+                # Compute inverse rotation matrix
+                inverse_rotation = rotation_matrix.T
+                return rotated_points, origin, inverse_rotation
+            
+            def inverse_transform_b1_vector(points, origin, inverse_rotation):
+                """Transform points back to the original 3D coordinates."""
+                rotated_back_points = np.dot(points, inverse_rotation)
+                return rotated_back_points + origin
+            
+            def calculate_heights_b1_vector(origin, points, hull):
+                """Calculate heights from the origin to each edge of the convex hull."""
+                edges = hull.simplices  # Edges of the convex hull
+                heights = []
+            
+                for edge in edges:
+                    # Points defining the edge
+                    p1 = points[edge[0]]
+                    p2 = points[edge[1]]
+            
+                    # Vector along the edge
+                    edge_vector = p2 - p1
+            
+                    # Vector from origin to one point on the edge
+                    origin_vector = -p1
+            
+                    # Compute the perpendicular distance from origin to the edge
+                    height_vector = origin_vector - np.dot(origin_vector, edge_vector) / np.dot(edge_vector, edge_vector) * edge_vector
+                    height = np.linalg.norm(height_vector)
+            
+                    # Midpoint of the edge (for visualization)
+                    midpoint = (p1 + p2) / 2
+                    heights.append((height, midpoint, p1, p2))
+                    
+                print("heights")
+                print(heights)
+                return heights
+                
             for _, row in filtered_df.iterrows():
                 # Extract x, y, z values
                 x, y, z = row['x'], row['y'], row['z']
@@ -551,7 +626,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             perpendicular_b1_vector = b1_vector - projection
             b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
             b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
-            b1_vector = b1_normalized_vector * b1
+            
             B1_loc = sterimol_param['loc_B1'].iloc[0]
            
             # Calculate the starting point along the blue line at B1_loc distance
@@ -642,6 +717,11 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 def transform_coordinates_b1_vector(filtered_df, atom1_index, atom2_index):
     """Transform points to align selected points with new axes."""
     # Translate so that idx1 is the origin
+    points = filtered_df[["x", "y", "z"]].to_numpy()
+    print("points")
+    print(points)
+    idx1 = atom1_index
+    idx2 = atom2_index
     origin = points[idx1]
     translated_points = points - origin
 
@@ -724,7 +804,7 @@ def plot_heights_3d(ax, heights, origin, inverse_rotation):
 def get_b1_vector(atoms, idx1, idx2):
 
     # Transform the coordinates
-    transformed_points, origin, inverse_rotation = transform_coordinates_b1_vector(points, idx1, idx2)
+    transformed_points, origin, inverse_rotation = transform_coordinates_b1_vector(atoms, idx1, idx2)
 
     # Compute convex hull and heights
     hull = ConvexHull(transformed_points[:, :2])
@@ -734,9 +814,11 @@ def get_b1_vector(atoms, idx1, idx2):
     height = shortest_height[0]
     midpoint = shortest_height[1]
     midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
-    
-    return origin, midpoint_original    
     b1_vector = midpoint_original- origin
+    
+    
+    return b1_vector   
+
     
 # Rest of the code remains the same
 # Function to remove violating connections

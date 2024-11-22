@@ -1,193 +1,145 @@
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial import ConvexHull
-import numpy as np
 
-# Generate 30 random 3D points
-np.random.seed(0)
-points = np.random.rand(30, 3)
+# Set random seed for reproducibility
+np.random.seed(42)
 
-def transform_coordinates_b1_vector(points, idx1, idx2):
-    """Transform points to align selected points with new axes."""
-    # Translate so that idx1 is the origin
-    origin = points[idx1]
-    translated_points = points - origin
+# Generate random 3D points
+def generate_points(num_points=20, range_min=-10, range_max=10):
+    return pd.DataFrame({
+        'x': np.random.uniform(range_min, range_max, num_points),
+        'y': np.random.uniform(range_min, range_max, num_points),
+        'z': np.random.uniform(range_min, range_max, num_points),
+    })
 
-    # Vector from idx1 to idx2
-    target_vector = translated_points[idx2]
+# Select two points by index
+def select_points(df):
+    print("Available points:\n", df)
+    while True:
+        try:
+            idx_a = int(input("\nSelect index for Point A: "))
+            idx_b = int(input("Select index for Point B: "))
+            if idx_a == idx_b:
+                print("Points A and B must be distinct.")
+                continue
+            if idx_a not in df.index or idx_b not in df.index:
+                print("Invalid indices. Please select valid point indices.")
+                continue
+            break
+        except ValueError:
+            print("Please enter valid integer indices.")
+    point_a = df.iloc[idx_a].values
+    point_b = df.iloc[idx_b].values
+    return point_a, point_b
 
-    # Normalize the target vector
-    target_vector = target_vector / np.linalg.norm(target_vector)
+# Calculate the plane basis vectors perpendicular to AB
+def calculate_plane_basis(ab_vector):
+    ab_unit = ab_vector / np.linalg.norm(ab_vector)
+    arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
+    basis_v = np.cross(ab_unit, arbitrary_vector)
+    basis_v /= np.linalg.norm(basis_v)
+    basis_w = np.cross(ab_unit, basis_v)
+    return basis_v, basis_w
 
-    # Construct the rotation matrix to align target_vector with Z-axis
-    z_axis = np.array([0, 0, 1])
-    v = np.cross(target_vector, z_axis)
-    c = np.dot(target_vector, z_axis)
-    s = np.linalg.norm(v)
-    if s == 0:  # If the vectors are already aligned
-        rotation_matrix = np.eye(3)
-    else:
-        vx = np.array([
-            [0, -v[2], v[1]],
-            [v[2], 0, -v[0]],
-            [-v[1], v[0], 0]
-        ])
-        rotation_matrix = np.eye(3) + vx + np.dot(vx, vx) * ((1 - c) / (s ** 2))
+# Project points onto the plane
+def project_to_plane(points, point_a, ab_vector, basis_v, basis_w):
+    projected_points = []
+    for point in points:
+        ap = point - point_a
+        x = np.dot(ap, basis_v)
+        y = np.dot(ap, basis_w)
+        projected_points.append([x, y])
+    return np.array(projected_points)
 
-    # Apply rotation
-    rotated_points = np.dot(translated_points, rotation_matrix.T)
+# Find the convex hull
+def compute_convex_hull(points_2d):
+    return ConvexHull(points_2d)
 
-    # Compute inverse rotation matrix
-    inverse_rotation = rotation_matrix.T
-    return rotated_points, origin, inverse_rotation
+# Find the shortest distance from a point to a segment
+def distance_to_segment(point, segment_start, segment_end):
+    segment_vector = segment_end - segment_start
+    segment_length = np.linalg.norm(segment_vector)
+    if segment_length == 0:
+        return np.linalg.norm(point - segment_start), segment_start
+    t = np.dot(point - segment_start, segment_vector) / segment_length**2
+    t = np.clip(t, 0, 1)
+    projection = segment_start + t * segment_vector
+    distance = np.linalg.norm(point - projection)
+    return distance, projection
 
-def inverse_transform_b1_vector(points, origin, inverse_rotation):
-    """Transform points back to the original 3D coordinates."""
-    rotated_back_points = np.dot(points, inverse_rotation)
-    return rotated_back_points + origin
+# Find the shortest vector from A to any edge of the convex hull
+def find_shortest_vector(point_a_2d, convex_hull):
+    min_distance = float('inf')
+    closest_projection = None
+    closest_edge = None
+    for i in range(len(convex_hull.vertices)):
+        start = convex_hull.points[convex_hull.vertices[i]]
+        end = convex_hull.points[convex_hull.vertices[(i + 1) % len(convex_hull.vertices)]]
+        distance, projection = distance_to_segment(point_a_2d, start, end)
+        if distance < min_distance:
+            min_distance = distance
+            closest_projection = projection
+            closest_edge = (start, end)
+    return min_distance, closest_projection, closest_edge
 
-def calculate_heights_b1_vector(origin, points, hull):
-    """Calculate heights from the origin to each edge of the convex hull."""
-    edges = hull.simplices  # Edges of the convex hull
-    heights = []
+# Visualize in 3D
+def visualize_3d(df, point_a, point_b, projected_points_3d, convex_hull, shortest_vector_3d):
+    fig = plt.figure(figsize=(12, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_proj_type('ortho')
 
-    for edge in edges:
-        # Points defining the edge
-        p1 = points[edge[0]]
-        p2 = points[edge[1]]
+    # Plot original points
+    ax.scatter(df['x'], df['y'], df['z'], label='Original Points', alpha=0.6)
 
-        # Vector along the edge
-        edge_vector = p2 - p1
+    # Plot points A and B
+    ax.scatter(*point_a, color='green', label='Point A', s=100)
+    ax.scatter(*point_b, color='red', label='Point B', s=100)
 
-        # Vector from origin to one point on the edge
-        origin_vector = -p1
+    # Plot projected points on the plane
+    ax.scatter(projected_points_3d[:, 0], projected_points_3d[:, 1], projected_points_3d[:, 2], label='Projected Points', alpha=0.8)
 
-        # Compute the perpendicular distance from origin to the edge
-        height_vector = origin_vector - np.dot(origin_vector, edge_vector) / np.dot(edge_vector, edge_vector) * edge_vector
-        height = np.linalg.norm(height_vector)
+    # Plot convex hull edges
+    for simplex in convex_hull.simplices:
+        start = projected_points_3d[simplex[0]]
+        end = projected_points_3d[simplex[1]]
+        ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], color='purple', label='Convex Hull Edge' if simplex[0] == 0 else "")
 
-        # Midpoint of the edge (for visualization)
-        midpoint = (p1 + p2) / 2
-        heights.append((height, midpoint, p1, p2))
+    # Plot shortest vector
+    ax.quiver(point_a[0], point_a[1], point_a[2],
+              shortest_vector_3d[0], shortest_vector_3d[1], shortest_vector_3d[2],
+              color='orange', label='Shortest Vector', linewidth=2)
 
-    return heights
+    ax.legend()
+    ax.set_title("3D Visualization with Orthographic Camera")
+    ax.set_xlabel("X-axis")
+    ax.set_ylabel("Y-axis")
+    ax.set_zlabel("Z-axis")
+    plt.show()
 
-def plot_heights_3d(ax, heights, origin, inverse_rotation):
-    
-    """Plot heights from the origin to each edge in the original 3D coordinates."""
-    # Find the shortest height
-    shortest_height = min(heights, key=lambda h: h[0])
+# Main program workflow
+df = generate_points()
+print("Generated Points:\n", df)
 
-    for height, midpoint, p1, p2 in heights:
-        color = "blue" 
-        p1_original = inverse_transform_b1_vector(p1.reshape(1, -1), origin, inverse_rotation)[0]
-        p2_original = inverse_transform_b1_vector(p2.reshape(1, -1), origin, inverse_rotation)[0]
-        midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
+point_a, point_b = select_points(df)
+ab_vector = point_b - point_a
+basis_v, basis_w = calculate_plane_basis(ab_vector)
 
-        ax.plot([p1_original[0], p2_original[0]], [p1_original[1], p2_original[1]], [p1_original[2], p2_original[2]], color="black")
-        ax.plot([origin[0], midpoint_original[0]], [origin[1], midpoint_original[1]], [origin[2], midpoint_original[2]], color=color)
+# Project points onto the plane
+projected_points = project_to_plane(df.values, point_a, ab_vector, basis_v, basis_w)
 
-def get_b1_vector(atoms, idx1, idx2):
+# Compute convex hull in 2D
+convex_hull = compute_convex_hull(projected_points)
 
-    # Transform the coordinates
-    transformed_points, origin, inverse_rotation = transform_coordinates_b1_vector(points, idx1, idx2)
+# Find the shortest vector in 2D
+point_a_2d = np.array([0, 0])
+min_distance, closest_proj_2d, closest_edge_2d = find_shortest_vector(point_a_2d, convex_hull)
 
-    # Compute convex hull and heights
-    hull = ConvexHull(transformed_points[:, :2])
-    heights = calculate_heights_b1_vector(np.array([0, 0, 0]), transformed_points, hull)
+# Back-project 2D points and vectors to 3D
+projected_points_3d = [point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points]
+shortest_vector_3d = closest_proj_2d[0] * basis_v + closest_proj_2d[1] * basis_w
 
-    shortest_height = min(heights, key=lambda h: h[0])
-    height = shortest_height[0]
-    midpoint = shortest_height[1]
-    midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
-    
-    return origin, midpoint_original    
-    
-    
-def on_click(event):
-    global selected_points, fig, ax
-
-    idx = find_closest_point(event)
-    if idx is not None:
-        selected_points.append(idx)
-        print(f"Selected point {idx}")
-
-        # Highlight the selected point
-        ax.scatter(
-            points[idx, 0],
-            points[idx, 1],
-            points[idx, 2],
-            color="green",
-            s=100,
-        )
-        fig.canvas.draw()
-
-        if len(selected_points) == 2:
-            idx1, idx2 = selected_points
-
-            # Transform the coordinates
-            transformed_points, origin, inverse_rotation = transform_coordinates_b1_vector(points, idx1, idx2)
-
-            # Compute convex hull and heights
-            hull = ConvexHull(transformed_points[:, :2])
-            heights = calculate_heights_b1_vector(np.array([0, 0, 0]), transformed_points, hull)
-
-            # Replot in original 3D space
-            fig.clear()
-            ax = fig.add_subplot(111, projection="3d")
-            ax.scatter(points[:, 0], points[:, 1], points[:, 2], color="red")
-
-            # Label the points
-            for i, (x, y, z) in enumerate(points):
-                ax.text(x, y, z, str(i), fontsize=8)
-
-            # Plot transformed edges and heights back in original 3D space
-            plot_heights_3d(ax, heights, origin, inverse_rotation)
-            
-            origin1, midpoint_original1 = get_b1_vector(points, idx1, idx2)
-
-            ax.plot([origin1[0], midpoint_original1[0]], [origin1[1], midpoint_original1[1]], [origin1[2], midpoint_original1[2]], color="Red")
-
-            ax.plot([points[idx1, 0], points[idx2, 0]], [points[idx1, 1], points[idx2, 1]], [points[idx1, 2], points[idx2, 2]], color="purple")
-
-            ax.set_title("Heights and Shape Transformed Back to 3D Space")
-            ax.set_xlabel("X-axis")
-            ax.set_ylabel("Y-axis")
-            ax.set_zlabel("Z-axis")
-            plt.show()
-
-# Find the closest point based on mouse click
-def find_closest_point(event):
-    if event.xdata is None or event.ydata is None:
-        return None  # Ignore clicks outside the plot area
-
-    # Map 2D click to 3D space
-    x2d, y2d = event.xdata, event.ydata
-    distances = []
-    for i, (x, y, z) in enumerate(points):
-        x3d, y3d, _ = proj3d.proj_transform(x, y, z, ax.get_proj())
-        distances.append((i, np.sqrt((x3d - x2d) ** 2 + (y3d - y2d) ** 2)))
-    closest_idx = min(distances, key=lambda t: t[1])[0]
-    return closest_idx
-
-# Initial plot
-fig = plt.figure()
-ax = fig.add_subplot(111, projection="3d")
-ax.scatter(points[:, 0], points[:, 1], points[:, 2], color="red")
-
-# Label each point with its index
-for i, (x, y, z) in enumerate(points):
-    ax.text(x, y, z, str(i), fontsize=8)
-
-ax.set_title("Click on two points to define new axes")
-ax.set_xlabel("X-axis")
-ax.set_ylabel("Y-axis")
-ax.set_zlabel("Z-axis")
-
-selected_points = []  # Store the indices of selected points
-
-# Connect the click event to the callback
-from mpl_toolkits.mplot3d import proj3d
-fig.canvas.mpl_connect("button_press_event", on_click)
-
-plt.show()
+# Visualize results
+visualize_3d(df, point_a, point_b, np.array(projected_points_3d), convex_hull, shortest_vector_3d)
