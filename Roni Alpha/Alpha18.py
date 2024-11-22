@@ -59,6 +59,7 @@ def compute_convex_hull(points_2d):
     return ConvexHull(points_2d)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Main pre-computation workflow
 df = generate_points()
 print("Generated Points:\n", df)
@@ -107,6 +108,8 @@ def get_shortest_vector(point_a_2d, convex_hull):
 
 =======
 >>>>>>> parent of 40394da (work in progress)
+=======
+>>>>>>> parent of c932b57 (Reapply "work in progress")
 # Find the shortest distance from a point to a segment
 def distance_to_segment(point, segment_start, segment_end):
     segment_vector = segment_end - segment_start
