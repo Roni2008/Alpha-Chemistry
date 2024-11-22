@@ -630,18 +630,18 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             projection_on_y_axis = atom1_coords + np.dot(b1_loc_vector - atom1_coords, L_vector_normalized) * L_vector_normalized
 
             # Now calculate the perpendicular component of the B1 vector relative to the blue axis
-            projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized  # Part of B1 aligned with blue axis
-            perpendicular_b1_vector = b1_vector - projection  # Perpendicular part
+            #projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized  # Part of B1 aligned with blue axis
+            #perpendicular_b1_vector = b1_vector - projection  # Perpendicular part
 
             # Plot the B1 vector, starting from the projection on the y-axis (along the blue line)
-            start_point = projection_on_y_axis  # This is now aligned with the blue axis
-            end_point = start_point + perpendicular_b1_vector  # End point of the B1 vector
+            #start_point = projection_on_y_axis  # This is now aligned with the blue axis
+            #end_point = start_point + perpendicular_b1_vector  # End point of the B1 vector
            
             # Project b1_vector perpendicular to the blue line
-            projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
-            perpendicular_b1_vector = b1_vector - projection
-            b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
-            b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
+            #projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
+            #perpendicular_b1_vector = b1_vector - projection
+            #b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
+            #b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
             
             B1_loc = sterimol_param['loc_B1'].iloc[0]
            

@@ -61,11 +61,8 @@ def compute_convex_hull(points_2d):
 # Main pre-computation workflow
 df = generate_points()
 print("Generated Points:\n", df)
-print("df")
-print(df)
+
 point_a, point_b = select_points(df)
-print("point_a")
-print(point_a)
 ab_vector = point_b - point_a
 basis_v, basis_w = calculate_plane_basis(ab_vector)
 
