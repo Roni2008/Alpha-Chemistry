@@ -457,11 +457,40 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             print(bonds_df)
             filter_indices=list(get_connected_nodes(bonds_df ,atom1_index+1 ,atom2_index+1))+[atom1_index+1 ,atom2_index+1]
             filter_indices = [num - 1 for num in filter_indices]
+            # Assuming `edited_coordinates_df` and `filter_indices` are already defined.
             filtered_df = edited_coordinates_df.loc[filter_indices]
             idx1 = atom1_index
             idx2 = atom2_index
-            atoms= filtered_df
-            b1_vector=get_b1_vector(atoms, idx1, idx2)
+            atoms = filtered_df
+            
+            # Extract points
+            points = filtered_df[['x', 'y', 'z']].values
+            point_a = points[idx1]
+            point_b = points[idx2]
+            
+            # Compute AB vector
+            ab_vector = point_b - point_a
+            
+            # Normalize AB vector to compute plane basis
+            ab_unit = ab_vector / np.linalg.norm(ab_vector)
+            
+            # Define an arbitrary vector that is not parallel to `ab_unit`
+            arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
+            
+            # Compute plane basis vectors
+            basis_v = np.cross(ab_unit, arbitrary_vector)
+            basis_v /= np.linalg.norm(basis_v)
+            basis_w = np.cross(ab_unit, basis_v)
+            
+            # Project points onto the plane
+            projected_points = project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w)
+            
+            # Compute convex hull
+            convex_hull = compute_convex_hull(projected_points)
+            
+            # Compute the shortest vector from A to the convex hull
+            point_a_2d = np.array([0, 0])
+            b1_vector = get_shortest_vector(point_a_2d, convex_hull)
             
             def transform_coordinates_b1_vector(filtered_df, atom1_index, atom2_index):
                 """Transform points to align selected points with new axes."""
@@ -701,112 +730,107 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
     ax.axis('off')  # Turn off axes
     plt.show()
 
-def transform_coordinates_b1_vector(filtered_df, atom1_index, atom2_index):
-    """Transform points to align selected points with new axes."""
-    # Translate so that idx1 is the origin
-    points = filtered_df[["x", "y", "z"]].to_numpy()
-    print("points")
-    print(points)
-    idx1 = atom1_index
-    idx2 = atom2_index
-    origin = points[idx1]
-    translated_points = points - origin
+def calculate_plane_basis(ab_vector):
+    ab_unit = ab_vector / np.linalg.norm(ab_vector)
+    arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
+    basis_v = np.cross(ab_unit, arbitrary_vector)
+    basis_v /= np.linalg.norm(basis_v)
+    basis_w = np.cross(ab_unit, basis_v)
+    return basis_v, basis_w
 
-    # Vector from idx1 to idx2
-    target_vector = translated_points[idx2]
+# Project points onto the plane
+def project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w):
+    points = filtered_df[['x', 'y', 'z']].values
+    projected_points = []
+    for point in points:
+        ap = point - point_a
+        x = np.dot(ap, basis_v)
+        y = np.dot(ap, basis_w)
+        projected_points.append([x, y])
+    return np.array(projected_points)
 
-    # Normalize the target vector
-    target_vector = target_vector / np.linalg.norm(target_vector)
+# Find the convex hull
+def compute_convex_hull(points_2d):
+    return ConvexHull(points_2d)
 
-    # Construct the rotation matrix to align target_vector with Z-axis
-    z_axis = np.array([0, 0, 1])
-    v = np.cross(target_vector, z_axis)
-    c = np.dot(target_vector, z_axis)
-    s = np.linalg.norm(v)
-    if s == 0:  # If the vectors are already aligned
-        rotation_matrix = np.eye(3)
-    else:
-        vx = np.array([
-            [0, -v[2], v[1]],
-            [v[2], 0, -v[0]],
-            [-v[1], v[0], 0]
-        ])
-        rotation_matrix = np.eye(3) + vx + np.dot(vx, vx) * ((1 - c) / (s ** 2))
+# Main pre-computation workflow
 
-    # Apply rotation
-    rotated_points = np.dot(translated_points, rotation_matrix.T)
-
-    # Compute inverse rotation matrix
-    inverse_rotation = rotation_matrix.T
-    return rotated_points, origin, inverse_rotation
-
-def inverse_transform_b1_vector(points, origin, inverse_rotation):
-    """Transform points back to the original 3D coordinates."""
-    rotated_back_points = np.dot(points, inverse_rotation)
-    return rotated_back_points + origin
-
-def calculate_heights_b1_vector(origin, points, hull):
-    """Calculate heights from the origin to each edge of the convex hull."""
-    edges = hull.simplices  # Edges of the convex hull
-    heights = []
-
-    for edge in edges:
-        # Points defining the edge
-        p1 = points[edge[0]]
-        p2 = points[edge[1]]
-
-        # Vector along the edge
-        edge_vector = p2 - p1
-
-        # Vector from origin to one point on the edge
-        origin_vector = -p1
-
-        # Compute the perpendicular distance from origin to the edge
-        height_vector = origin_vector - np.dot(origin_vector, edge_vector) / np.dot(edge_vector, edge_vector) * edge_vector
-        height = np.linalg.norm(height_vector)
-
-        # Midpoint of the edge (for visualization)
-        midpoint = (p1 + p2) / 2
-        heights.append((height, midpoint, p1, p2))
-        
-    print("heights")
-    print(heights)
-    return heights
+def compute_workflow(filtered_df, atom1_index, atom2_index):
+    """
+    Compute plane basis, project points, and calculate the shortest vector.
     
-def plot_heights_3d(ax, heights, origin, inverse_rotation):
-    
-    """Plot heights from the origin to each edge in the original 3D coordinates."""
-    # Find the shortest height
-    shortest_height = min(heights, key=lambda h: h[0])
+    Parameters:
+        filtered_df (pd.DataFrame): The DataFrame containing `x`, `y`, `z` columns.
+        atom1_index (int): Index for the first atom.
+        atom2_index (int): Index for the second atom.
 
-    for height, midpoint, p1, p2 in heights:
-        color = "blue" 
-        p1_original = inverse_transform_b1_vector(p1.reshape(1, -1), origin, inverse_rotation)[0]
-        p2_original = inverse_transform_b1_vector(p2.reshape(1, -1), origin, inverse_rotation)[0]
-        midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
+    Returns:
+        tuple: projected_points_3d, convex_hull, shortest_vector_3d
+    """
+    # Extract points from the filtered DataFrame
+    points = filtered_df[['x', 'y', 'z']].values
 
-        ax.plot([p1_original[0], p2_original[0]], [p1_original[1], p2_original[1]], [p1_original[2], p2_original[2]], color="black")
-        ax.plot([origin[0], midpoint_original[0]], [origin[1], midpoint_original[1]], [origin[2], midpoint_original[2]], color=color)
+    # Select points for A and B based on the indices
+    point_a = points[atom1_index]
+    point_b = points[atom2_index]
 
-def get_b1_vector(atoms, idx1, idx2):
+    # Compute the AB vector
+    ab_vector = point_b - point_a
 
-    # Transform the coordinates
-    transformed_points, origin, inverse_rotation = transform_coordinates_b1_vector(atoms, idx1, idx2)
+    # Calculate plane basis vectors
+    basis_v, basis_w = calculate_plane_basis(ab_vector)
 
-    # Compute convex hull and heights
-    hull = ConvexHull(transformed_points[:, :2])
-    heights = calculate_heights_b1_vector(np.array([0, 0, 0]), transformed_points, hull)
+    # Project points onto the plane
+    projected_points = project_to_plane(points, point_a, ab_vector, basis_v, basis_w)
 
-    shortest_height = min(heights, key=lambda h: h[0])
-    height = shortest_height[0]
-    midpoint = shortest_height[1]
-    midpoint_original = inverse_transform_b1_vector(midpoint.reshape(1, -1), origin, inverse_rotation)[0]
-    b1_vector = midpoint_original- origin
-    
-    
-    return b1_vector   
+    # Compute convex hull in 2D
+    convex_hull = compute_convex_hull(projected_points)
 
-    
+    # Find the shortest vector in 2D
+    point_a_2d = np.array([0, 0])
+    shortest_vector_2d = get_shortest_vector(point_a_2d, convex_hull)
+
+    # Back-project 2D points and vectors to 3D
+    projected_points_3d = [point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points]
+    shortest_vector_3d = shortest_vector_2d[0] * basis_v + shortest_vector_2d[1] * basis_w
+
+    return np.array(projected_points_3d), convex_hull, shortest_vector_3d
+
+# Find the shortest vector from A to any edge of the convex hull
+def get_shortest_vector(point_a_2d, convex_hull):
+    """
+    Finds the shortest vector from a point to any edge of the convex hull.
+
+    Parameters:
+        point_a_2d (np.array): The 2D coordinates of the reference point.
+        convex_hull (ConvexHull): The convex hull object computed from points.
+
+    Returns:
+        np.array: The shortest vector from the point to the closest edge of the convex hull.
+    """
+    min_distance = float('inf')
+    closest_projection = None
+    for i in range(len(convex_hull.vertices)):
+        start = convex_hull.points[convex_hull.vertices[i]]
+        end = convex_hull.points[convex_hull.vertices[(i + 1) % len(convex_hull.vertices)]]
+        distance, projection = distance_to_segment(point_a_2d, start, end)
+        if distance < min_distance:
+            min_distance = distance
+            closest_projection = projection
+    shortest_vector = closest_projection - point_a_2d
+    return shortest_vector
+
+def distance_to_segment(point, segment_start, segment_end):
+    segment_vector = segment_end - segment_start
+    segment_length = np.linalg.norm(segment_vector)
+    if segment_length == 0:
+        return np.linalg.norm(point - segment_start), segment_start
+    t = np.dot(point - segment_start, segment_vector) / segment_length**2
+    t = np.clip(t, 0, 1)
+    projection = segment_start + t * segment_vector
+    distance = np.linalg.norm(point - projection)
+    return distance, projection
+
 # Rest of the code remains the same
 # Function to remove violating connections
 def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance):
