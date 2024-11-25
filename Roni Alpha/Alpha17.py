@@ -15,6 +15,42 @@ import os
 from tkinter import Tk, filedialog
 import networkx as nx
 from scipy.spatial import ConvexHull
+# Define the function to find the point with the maximum distance from a line defined by points A and B
+def find_point_with_max_distance_from_line(df, A_coords, B_coords):
+    """
+    Find the point in the dataframe that has the maximum perpendicular distance from a line defined by points A and B.
+    
+    Parameters:
+    - df (pd.DataFrame): DataFrame containing 'x', 'y', 'z' columns (and possibly others).
+    - A_coords (tuple or list): Coordinates of point A (Ax, Ay, Az).
+    - B_coords (tuple or list): Coordinates of point B (Bx, By, Bz).
+    
+    Returns:
+    - max_distance_point (pd.Series): Row with the point having the maximum distance, including its coordinates and distance.
+    """
+    # Convert A and B coordinates to numpy arrays
+    A = np.array(A_coords)
+    B = np.array(B_coords)
+    
+    # Calculate the direction vector from A to B and normalize it
+    AB = B - A
+    AB_direction = AB / np.linalg.norm(AB)  # Unit vector along line A-B
+
+    # Function to calculate the perpendicular distance from a point to line A-B
+    def perpendicular_distance(point):
+        AP = point - A  # Vector from A to the point
+        projection_length = np.dot(AP, AB_direction)  # Length of projection onto AB_direction
+        projection_point = A + projection_length * AB_direction  # Closest point on the line
+        perpendicular_vector = point - projection_point  # Vector from line to point
+        return np.linalg.norm(perpendicular_vector)  # Distance (magnitude of perpendicular vector)
+
+    # Apply the function to each point in the dataframe to calculate distances
+    df['distance'] = df.apply(lambda row: perpendicular_distance(np.array([row['x'], row['y'], row['z']])), axis=1)
+
+    # Find the point with the maximum distance
+    max_distance_point = df.loc[df['distance'].idxmax()]
+    
+    return max_distance_point
 
 def get_connected_nodes(bonds_df, from_node, to_node):
     # Create a graph from the DataFrame
@@ -469,28 +505,29 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             point_b = points[idx2]
             
             # Compute AB vector
-            ab_vector = point_b - point_a
+            #ab_vector = point_b - point_a
             
             # Normalize AB vector to compute plane basis
-            ab_unit = ab_vector / np.linalg.norm(ab_vector)
+            #ab_unit = ab_vector / np.linalg.norm(ab_vector)
             
             # Define an arbitrary vector that is not parallel to `ab_unit`
-            arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
+            #arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
             
             # Compute plane basis vectors
-            basis_v = np.cross(ab_unit, arbitrary_vector)
-            basis_v /= np.linalg.norm(basis_v)
-            basis_w = np.cross(ab_unit, basis_v)
+            #basis_v = np.cross(ab_unit, arbitrary_vector)
+            ##basis_v /= np.linalg.norm(basis_v)
+            #basis_w = np.cross(ab_unit, basis_v)
             
             # Project points onto the plane
-            projected_points = project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w)
+            #projected_points = project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w)
             
             # Compute convex hull
-            convex_hull = compute_convex_hull(projected_points)
+            #convex_hull = compute_convex_hull(projected_points)
             
             # Compute the shortest vector from A to the convex hull
-            point_a_2d = np.array([0, 0])
-            b1_vector = get_shortest_vector(point_a_2d, convex_hull)
+            #point_a_2d = np.array([0, 0])
+            df = df = filtered_df[['x', 'y', 'z']].values
+            b1_vector = get_shortest_vector_3d(df, point_a, point_b)
             
             def transform_coordinates_b1_vector(filtered_df, atom1_index, atom2_index):
                 """Transform points to align selected points with new axes."""
@@ -566,27 +603,30 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                 # Extract x, y, z values
                 x, y, z = row['x'], row['y'], row['z']
                 # Scatter each point with a yellow color and a radius of 2
-                ax.scatter(x, y, z, color='yellow', s=100)
+                #ax.scatter(x, y, z, color='yellow', s=100)
                 
             
             
-            edited_coordinates_df['Projection Magnitude'] = edited_coordinates_df.apply(
+            #edited_coordinates_df['Projection Magnitude'] = edited_coordinates_df.apply
+            filtered_df['Projection Magnitude'] = filtered_df.apply(
                 lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
             )
 
-            max_projection_point = edited_coordinates_df.loc[edited_coordinates_df['Projection Magnitude'].idxmax()]
+            #max_projection_point = edited_coordinates_df.loc[edited_coordinates_df['Projection Magnitude'].idxmax()]
 
-            ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='green', s=(radius * 100), picker=True)
-            
-            starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
-            ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
-                                     max_projection_point['z']])  # Coordinates of the atom with the radius of 100
-            b5_vector = ending_point - starting_point
+            #ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='green', s=(radius * 100), picker=True)
+            max_projection_point = filtered_df.loc[filtered_df['Projection Magnitude'].idxmax()]
+            #starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
+            #ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
+             #                        max_projection_point['z']])  # Coordinates of the atom with the radius of 100
+            #b5_vector = ending_point - starting_point
+            max_projection_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])
             L_vector_normalized = L_vector / np.linalg.norm(L_vector)
-            projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
-            new_b5_vector = b5_vector - projection
-            new_ending_point = starting_point + new_b5_vector
+            #projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
+            #new_b5_vector = b5_vector - projection
+            #new_ending_point = starting_point + new_b5_vector
             B5_loc = sterimol_param['loc_B5'].iloc[0]
+            '''
             start_point_B5 = atom1_coords + B5_loc * direction_vector
             
             # Filter points where Projection Magnitude is greater than 0
@@ -601,7 +641,12 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                 s=20,      # Set the size of each point
                 picker=True
             )
-
+             '''
+            b5_start_point=atom1_coords+L_vector_normalized*B5_loc
+            b5_proj_vec=max_projection_point-atom1_coords
+            b5_proj_len = np.dot(max_projection_point, L_vector_normalized)
+            b5_proj_point = atom1_coords + b5_proj_len * L_vector_normalized
+            '''
             # Define a perpendicular direction vector for B1 line
             # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
             # (you may already have this calculation in place; otherwise, compute it)
@@ -610,11 +655,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             # Calculate the end point of the B1 line
             end_point_B5 = start_point_B5 + b5_vector
-
-            # Draw the B1 line in red
-            ax.plot([start_point_B5[0], end_point_B5[0]],
-                    [start_point_B5[1], end_point_B5[1]],
-                    [start_point_B5[2], end_point_B5[2]], color='green', linestyle='--')
+            '''
+            b5_perp_vec = max_projection_point - b5_proj_point
+            b5_end_point = b5_start_point + b5_perp_vec
+            
+            ax.plot([b5_start_point[0], b5_end_point[0]],
+                    [b5_start_point[1], b5_end_point[1]],
+                    [b5_start_point[2], b5_end_point[2]], color='green', linestyle='--')
             
             
             
@@ -662,13 +709,13 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                     [start_point_B1[1], end_point_B1[1]],
                     [start_point_B1[2], end_point_B1[2]], color='red', linestyle='--')
             
-                    
+            '''      
             # Optionally, add an arrowhead for the purple line
             ax.quiver(start_point[0], start_point[1], start_point[2],
                       perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
                       length=0.1, color='red', arrow_length_ratio=0.2)
 
-           
+           '''
 
         # If all atoms are selected, display the list of selected atom positions
         if len(nav.selected_atoms) == nav.num_atoms_to_pick:
@@ -729,7 +776,44 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
     plt.title(file_name)
     ax.axis('off')  # Turn off axes
     plt.show()
+ 
+def prepare_data(filtered_df, atom1_index, atom2_index):
+    """
+    Prepares data for finding the shortest vector and visualization.
 
+    Parameters:
+        df (DataFrame): DataFrame containing 3D points.
+
+    Returns:
+        tuple: Contains point_a, point_b, basis_v, basis_w, projected_points_3d, convex_hull, and ab_vector.
+    """
+    print("Generated Points:\n", df)
+
+    # Select points A and B
+    df = filtered_df[['x', 'y', 'z']].values
+
+    # Select points for A and B based on the indices
+    point_a = df[atom1_index]
+    point_b = df[atom2_index]
+    
+
+    # Compute vector AB and basis vectors for the plane
+    ab_vector = point_b - point_a
+    basis_v, basis_w = calculate_plane_basis(ab_vector)
+
+    # Project points onto the plane
+    projected_points = project_to_plane(df.values, point_a, basis_v, basis_w)
+
+    # Compute the convex hull in 2D
+    convex_hull = compute_convex_hull(projected_points)
+
+    # Transform projected points back to 3D for visualization
+    projected_points_3d = np.array([point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points])
+
+    return point_a, point_b, basis_v, basis_w, projected_points_3d, convex_hull, ab_vector
+
+
+# Calculate the plane basis vectors perpendicular to AB
 def calculate_plane_basis(ab_vector):
     ab_unit = ab_vector / np.linalg.norm(ab_vector)
     arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
@@ -739,8 +823,7 @@ def calculate_plane_basis(ab_vector):
     return basis_v, basis_w
 
 # Project points onto the plane
-def project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w):
-    points = filtered_df[['x', 'y', 'z']].values
+def project_to_plane(points, point_a, basis_v, basis_w):
     projected_points = []
     for point in points:
         ap = point - point_a
@@ -753,73 +836,7 @@ def project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w):
 def compute_convex_hull(points_2d):
     return ConvexHull(points_2d)
 
-# Main pre-computation workflow
-
-def compute_workflow(filtered_df, atom1_index, atom2_index):
-    """
-    Compute plane basis, project points, and calculate the shortest vector.
-    
-    Parameters:
-        filtered_df (pd.DataFrame): The DataFrame containing `x`, `y`, `z` columns.
-        atom1_index (int): Index for the first atom.
-        atom2_index (int): Index for the second atom.
-
-    Returns:
-        tuple: projected_points_3d, convex_hull, shortest_vector_3d
-    """
-    # Extract points from the filtered DataFrame
-    points = filtered_df[['x', 'y', 'z']].values
-
-    # Select points for A and B based on the indices
-    point_a = points[atom1_index]
-    point_b = points[atom2_index]
-
-    # Compute the AB vector
-    ab_vector = point_b - point_a
-
-    # Calculate plane basis vectors
-    basis_v, basis_w = calculate_plane_basis(ab_vector)
-
-    # Project points onto the plane
-    projected_points = project_to_plane(points, point_a, ab_vector, basis_v, basis_w)
-
-    # Compute convex hull in 2D
-    convex_hull = compute_convex_hull(projected_points)
-
-    # Find the shortest vector in 2D
-    point_a_2d = np.array([0, 0])
-    shortest_vector_2d = get_shortest_vector(point_a_2d, convex_hull)
-
-    # Back-project 2D points and vectors to 3D
-    projected_points_3d = [point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points]
-    shortest_vector_3d = shortest_vector_2d[0] * basis_v + shortest_vector_2d[1] * basis_w
-
-    return np.array(projected_points_3d), convex_hull, shortest_vector_3d
-
-# Find the shortest vector from A to any edge of the convex hull
-def get_shortest_vector(point_a_2d, convex_hull):
-    """
-    Finds the shortest vector from a point to any edge of the convex hull.
-
-    Parameters:
-        point_a_2d (np.array): The 2D coordinates of the reference point.
-        convex_hull (ConvexHull): The convex hull object computed from points.
-
-    Returns:
-        np.array: The shortest vector from the point to the closest edge of the convex hull.
-    """
-    min_distance = float('inf')
-    closest_projection = None
-    for i in range(len(convex_hull.vertices)):
-        start = convex_hull.points[convex_hull.vertices[i]]
-        end = convex_hull.points[convex_hull.vertices[(i + 1) % len(convex_hull.vertices)]]
-        distance, projection = distance_to_segment(point_a_2d, start, end)
-        if distance < min_distance:
-            min_distance = distance
-            closest_projection = projection
-    shortest_vector = closest_projection - point_a_2d
-    return shortest_vector
-
+# Find the shortest distance from a point to a segment
 def distance_to_segment(point, segment_start, segment_end):
     segment_vector = segment_end - segment_start
     segment_length = np.linalg.norm(segment_vector)
@@ -830,6 +847,44 @@ def distance_to_segment(point, segment_start, segment_end):
     projection = segment_start + t * segment_vector
     distance = np.linalg.norm(point - projection)
     return distance, projection
+
+# Find the shortest vector from A to any edge of the convex hull in 2D
+def find_shortest_vector_2d(point_a_2d, convex_hull):
+    min_distance = float('inf')
+    closest_projection = None
+    for i in range(len(convex_hull.vertices)):
+        start = convex_hull.points[convex_hull.vertices[i]]
+        end = convex_hull.points[convex_hull.vertices[(i + 1) % len(convex_hull.vertices)]]
+        distance, projection = distance_to_segment(point_a_2d, start, end)
+        if distance < min_distance:
+            min_distance = distance
+            closest_projection = projection
+    return closest_projection
+
+# Compute the shortest vector in 3D
+def get_shortest_vector_3d(df, point_a, point_b):
+    ab_vector = point_b - point_a
+    basis_v, basis_w = calculate_plane_basis(ab_vector)
+
+    # Project points onto the plane
+    projected_points = project_to_plane(df, point_a, basis_v, basis_w)
+
+    # Compute convex hull in 2D
+    convex_hull = compute_convex_hull(projected_points)
+
+    # Find the shortest vector in 2D
+    point_a_2d = np.array([0, 0])  # Point A in the plane
+    closest_proj_2d = find_shortest_vector_2d(point_a_2d, convex_hull)
+
+    # Back-project the shortest vector to 3D
+    if closest_proj_2d is not None:
+        shortest_vector_3d = closest_proj_2d[0] * basis_v + closest_proj_2d[1] * basis_w
+    else:
+        shortest_vector_3d = np.array([0, 0, 0])  # Default to zero vector if no projection found
+    print(shortest_vector_3d)
+    print("shortest_vector_3d")
+    return shortest_vector_3d
+   
 
 # Rest of the code remains the same
 # Function to remove violating connections

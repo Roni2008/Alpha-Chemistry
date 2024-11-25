@@ -35,6 +35,37 @@ def select_points(df):
     point_b = df.iloc[idx_b].values
     return point_a, point_b
 
+def prepare_data(df):
+    """
+    Prepares data for finding the shortest vector and visualization.
+
+    Parameters:
+        df (DataFrame): DataFrame containing 3D points.
+
+    Returns:
+        tuple: Contains point_a, point_b, basis_v, basis_w, projected_points_3d, convex_hull, and ab_vector.
+    """
+    print("Generated Points:\n", df)
+
+    # Select points A and B
+    point_a, point_b = select_points(df)
+
+    # Compute vector AB and basis vectors for the plane
+    ab_vector = point_b - point_a
+    basis_v, basis_w = calculate_plane_basis(ab_vector)
+
+    # Project points onto the plane
+    projected_points = project_to_plane(df.values, point_a, basis_v, basis_w)
+
+    # Compute the convex hull in 2D
+    convex_hull = compute_convex_hull(projected_points)
+
+    # Transform projected points back to 3D for visualization
+    projected_points_3d = np.array([point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points])
+
+    return point_a, point_b, basis_v, basis_w, projected_points_3d, convex_hull, ab_vector
+
+
 # Calculate the plane basis vectors perpendicular to AB
 def calculate_plane_basis(ab_vector):
     ab_unit = ab_vector / np.linalg.norm(ab_vector)
@@ -45,7 +76,7 @@ def calculate_plane_basis(ab_vector):
     return basis_v, basis_w
 
 # Project points onto the plane
-def project_to_plane(points, point_a, ab_vector, basis_v, basis_w):
+def project_to_plane(points, point_a, basis_v, basis_w):
     projected_points = []
     for point in points:
         ap = point - point_a
@@ -58,58 +89,6 @@ def project_to_plane(points, point_a, ab_vector, basis_v, basis_w):
 def compute_convex_hull(points_2d):
     return ConvexHull(points_2d)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-# Main pre-computation workflow
-df = generate_points()
-print("Generated Points:\n", df)
-
-point_a, point_b = select_points(df)
-ab_vector = point_b - point_a
-basis_v, basis_w = calculate_plane_basis(ab_vector)
-
-# Project points onto the plane
-projected_points = project_to_plane(df.values, point_a, ab_vector, basis_v, basis_w)
-
-# Compute convex hull in 2D
-convex_hull = compute_convex_hull(projected_points)
-
-# Find the shortest vector in 2D
-point_a_2d = np.array([0, 0])
-shortest_vector_2d = None  # Placeholder for global use later
-
-# Back-project 2D points and vectors to 3D
-projected_points_3d = [point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points]
-shortest_vector_3d = None  # Placeholder for global use later
-
-# Find the shortest vector from A to any edge of the convex hull
-def get_shortest_vector(point_a_2d, convex_hull):
-    """
-    Finds the shortest vector from a point to any edge of the convex hull.
-
-    Parameters:
-        point_a_2d (np.array): The 2D coordinates of the reference point.
-        convex_hull (ConvexHull): The convex hull object computed from points.
-
-    Returns:
-        np.array: The shortest vector from the point to the closest edge of the convex hull.
-    """
-    min_distance = float('inf')
-    closest_projection = None
-    for i in range(len(convex_hull.vertices)):
-        start = convex_hull.points[convex_hull.vertices[i]]
-        end = convex_hull.points[convex_hull.vertices[(i + 1) % len(convex_hull.vertices)]]
-        distance, projection = distance_to_segment(point_a_2d, start, end)
-        if distance < min_distance:
-            min_distance = distance
-            closest_projection = projection
-    shortest_vector = closest_projection - point_a_2d
-    return shortest_vector
-
-=======
->>>>>>> parent of 40394da (work in progress)
-=======
->>>>>>> parent of c932b57 (Reapply "work in progress")
 # Find the shortest distance from a point to a segment
 def distance_to_segment(point, segment_start, segment_end):
     segment_vector = segment_end - segment_start
@@ -122,11 +101,10 @@ def distance_to_segment(point, segment_start, segment_end):
     distance = np.linalg.norm(point - projection)
     return distance, projection
 
-# Find the shortest vector from A to any edge of the convex hull
-def find_shortest_vector(point_a_2d, convex_hull):
+# Find the shortest vector from A to any edge of the convex hull in 2D
+def find_shortest_vector_2d(point_a_2d, convex_hull):
     min_distance = float('inf')
     closest_projection = None
-    closest_edge = None
     for i in range(len(convex_hull.vertices)):
         start = convex_hull.points[convex_hull.vertices[i]]
         end = convex_hull.points[convex_hull.vertices[(i + 1) % len(convex_hull.vertices)]]
@@ -134,8 +112,32 @@ def find_shortest_vector(point_a_2d, convex_hull):
         if distance < min_distance:
             min_distance = distance
             closest_projection = projection
-            closest_edge = (start, end)
-    return min_distance, closest_projection, closest_edge
+    return closest_projection
+
+# Compute the shortest vector in 3D
+def get_shortest_vector_3d(df, point_a, point_b):
+    ab_vector = point_b - point_a
+    basis_v, basis_w = calculate_plane_basis(ab_vector)
+
+    # Project points onto the plane
+    projected_points = project_to_plane(df.values, point_a, basis_v, basis_w)
+
+    # Compute convex hull in 2D
+    convex_hull = compute_convex_hull(projected_points)
+
+    # Find the shortest vector in 2D
+    point_a_2d = np.array([0, 0])  # Point A in the plane
+    closest_proj_2d = find_shortest_vector_2d(point_a_2d, convex_hull)
+
+    # Back-project the shortest vector to 3D
+    if closest_proj_2d is not None:
+        shortest_vector_3d = closest_proj_2d[0] * basis_v + closest_proj_2d[1] * basis_w
+    else:
+        shortest_vector_3d = np.array([0, 0, 0])  # Default to zero vector if no projection found
+    print(shortest_vector_3d)
+    print("shortest_vector_3d")
+    return shortest_vector_3d
+   
 
 # Visualize in 3D
 def visualize_3d(df, point_a, point_b, projected_points_3d, convex_hull, shortest_vector_3d):
@@ -176,22 +178,21 @@ df = generate_points()
 print("Generated Points:\n", df)
 
 point_a, point_b = select_points(df)
+
+# Compute the shortest vector and related data for visualization
+# Compute the shortest vector and related data for visualization
 ab_vector = point_b - point_a
 basis_v, basis_w = calculate_plane_basis(ab_vector)
-
-# Project points onto the plane
-projected_points = project_to_plane(df.values, point_a, ab_vector, basis_v, basis_w)
-
-# Compute convex hull in 2D
+projected_points = project_to_plane(df.values, point_a, basis_v, basis_w)
 convex_hull = compute_convex_hull(projected_points)
+shortest_vector_3d = get_shortest_vector_3d(df, point_a, point_b)
 
-# Find the shortest vector in 2D
-point_a_2d = np.array([0, 0])
-min_distance, closest_proj_2d, closest_edge_2d = find_shortest_vector(point_a_2d, convex_hull)
-
-# Back-project 2D points and vectors to 3D
-projected_points_3d = [point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points]
-shortest_vector_3d = closest_proj_2d[0] * basis_v + closest_proj_2d[1] * basis_w
+# Transform 2D projected points back to 3D
+projected_points_3d = np.array([point_a + p[0] * basis_v + p[1] * basis_w for p in projected_points])
 
 # Visualize results
-visualize_3d(df, point_a, point_b, np.array(projected_points_3d), convex_hull, shortest_vector_3d)
+visualize_3d(df, point_a, point_b, projected_points_3d, convex_hull, shortest_vector_3d)
+
+
+# Visualize results
+visualize_3d(df, point_a, point_b, np.array(projected_points), convex_hull, shortest_vector_3d)
