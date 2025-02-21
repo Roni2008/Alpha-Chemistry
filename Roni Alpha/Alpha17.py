@@ -15,19 +15,10 @@ import os
 from tkinter import Tk, filedialog
 import networkx as nx
 from scipy.spatial import ConvexHull
+
 # Define the function to find the point with the maximum distance from a line defined by points A and B
 def find_point_with_max_distance_from_line(df, A_coords, B_coords):
-    """
-    Find the point in the dataframe that has the maximum perpendicular distance from a line defined by points A and B.
     
-    Parameters:
-    - df (pd.DataFrame): DataFrame containing 'x', 'y', 'z' columns (and possibly others).
-    - A_coords (tuple or list): Coordinates of point A (Ax, Ay, Az).
-    - B_coords (tuple or list): Coordinates of point B (Bx, By, Bz).
-    
-    Returns:
-    - max_distance_point (pd.Series): Row with the point having the maximum distance, including its coordinates and distance.
-    """
     # Convert A and B coordinates to numpy arrays
     A = np.array(A_coords)
     B = np.array(B_coords)
@@ -129,26 +120,7 @@ def read_element_data_from_csv(csv_file_path):
     return element_data
 # my calculation of B1
 def my_calc_B1(transformed_plane, avs, edited_coordinates_df, column_index):
-    """
-    Parameters
-    ----------
-    transformed_plane : np.array
-        [x,z] plane of the molecule coordinates.
-        example:
-            [-0.6868 -0.4964]
-            [-0.7384 -0.5135]
-            [-0.3759 -0.271 ]
-            [-1.1046 -0.8966]
-            [ 0.6763  0.5885]
-    avs : list
-        the max & min of the [x,z] columns from the transformed_plane.
-        example:[0.6763, -1.1046, 0.5885, -0.8966
-                 ]
-    edited_coordinates_df : TYPE
-        DESCRIPTION.
-    column_index : int
-        0 or 1 depending- being used for transformed plane.
-    """
+   
     ## get the index of the min value in the column compared to the avs.min
     idx = np.where(np.isclose(np.abs(transformed_plane[:, column_index]), (avs.min()).round(4)))[0][0]
     if transformed_plane[idx, column_index] < 0:
@@ -181,13 +153,7 @@ def my_calc_B1(transformed_plane, avs, edited_coordinates_df, column_index):
 
 
 def my_b1s_for_loop_function(extended_df, b1s, b1s_loc, degree_list, plane):
-    """
-    extended_df : pd.DataFrame
-    b1s : list
-    b1s_loc : list
-    degree_list : list
-    plane : np.array
-    """
+    
     degree = []
     b1s_xz = []
     for degree in degree_list:
@@ -361,7 +327,9 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             print(sterimol_param)
             print(atom1_index)
             print(atom2_index)            
-
+            ax.legend()
+            ax.set_title(sterimol_param)
+            plt.show()
             # Visualize B1 and B5
             L = np.linalg.norm(atom2_coords - atom1_coords)
             L_vector = atom2_coords - atom1_coords
@@ -371,20 +339,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
 
             # Filter atoms in the direction of the second atom
             bonds_df = cur_molecule.bonds_df
-            """
-            ask itay promisin to delete
-            base_atoms = get_sterimol_indices(coords_df, bonds_df)
-            bonds_direction = direction_atoms_for_sterimol(bonds_df, base_atoms)
-            new_coordinates_df = preform_coordination_transformation(coords_df, bonds_direction)
-            if True:
-                connected_from_direction = get_molecule_connections(bonds_df, base_atoms[atom1_index], base_atoms[atom2_index])
-            else:
-                connected_from_direction = None
-            bonded_atoms_df = get_specific_bonded_atoms_df(bonds_df, connected_from_direction, new_coordinates_df)
             
-            extended_df = get_extended_df_for_sterimol(new_coordinates_df, bonds_df, 'blue')
-            edited_coords = filter_atoms_for_sterimol(bonded_atoms_df, coords_df)
-            """
             
             indices = gather_indices(filter_bonds(bonds_df, 2, 1))
             indices_zero_based = [idx - 1 for idx in indices]
@@ -395,33 +350,6 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             
             A = np.array([atom1_coords[0], atom1_coords[1], atom1_coords[2]])
             B = np.array([atom2_coords[0], atom2_coords[1], atom2_coords[2]])
-
-            """
-            ask itay
-            # Function to project a point onto the line
-            def get_project_magniute(P, A, B):
-                            
-                a = np.array(A - A)
-                b = np.array(B - A)
-                p = np.array(P - A)
-                
-                distance_b = np.linalg.norm(b)
-                distance_p = np.linalg.norm(p)
-
-                # dot between A and B
-                above = p[0] * b[0] +  p[1] * b[1] + p[2] * b[2]
-                lower = distance_b * distance_p
-                alpha = np.arccos(above/lower)
-                
-                final_dis = distance_p * np.sin(alpha)
-                
-                return final_dis
-            
-            # Project each point and calculate the magnitudes of the projections
-            coords_df['Projection Magnitude'] = coords_df.apply(
-                lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
-            )
-            """
             
             # Function to project a point onto the line
             def get_project_magniute(P, A, B):
@@ -504,28 +432,6 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             point_a = points[idx1]
             point_b = points[idx2]
             
-            # Compute AB vector
-            #ab_vector = point_b - point_a
-            
-            # Normalize AB vector to compute plane basis
-            #ab_unit = ab_vector / np.linalg.norm(ab_vector)
-            
-            # Define an arbitrary vector that is not parallel to `ab_unit`
-            #arbitrary_vector = np.array([1, 0, 0]) if not np.allclose(ab_unit, [1, 0, 0]) else np.array([0, 1, 0])
-            
-            # Compute plane basis vectors
-            #basis_v = np.cross(ab_unit, arbitrary_vector)
-            ##basis_v /= np.linalg.norm(basis_v)
-            #basis_w = np.cross(ab_unit, basis_v)
-            
-            # Project points onto the plane
-            #projected_points = project_to_plane(filtered_df, point_a, ab_vector, basis_v, basis_w)
-            
-            # Compute convex hull
-            #convex_hull = compute_convex_hull(projected_points)
-            
-            # Compute the shortest vector from A to the convex hull
-            #point_a_2d = np.array([0, 0])
             df = df = filtered_df[['x', 'y', 'z']].values
             b1_vector = get_shortest_vector_3d(df, point_a, point_b)
             
@@ -612,50 +518,18 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                 lambda row: get_project_magniute(np.array([row['x'], row['y'], row['z']]), A, B), axis=1
             )
 
-            #max_projection_point = edited_coordinates_df.loc[edited_coordinates_df['Projection Magnitude'].idxmax()]
-
-            #ax.scatter(max_projection_point['x'], max_projection_point['y'], max_projection_point['z'], c='green', s=(radius * 100), picker=True)
             max_projection_point = filtered_df.loc[filtered_df['Projection Magnitude'].idxmax()]
-            #starting_point = (atom1_coords + atom2_coords) / 2  # Midpoint on the blue axis line
-            #ending_point = np.array([max_projection_point['x'], max_projection_point['y'],
-             #                        max_projection_point['z']])  # Coordinates of the atom with the radius of 100
-            #b5_vector = ending_point - starting_point
+            
             max_projection_point = np.array([max_projection_point['x'], max_projection_point['y'], max_projection_point['z']])
             L_vector_normalized = L_vector / np.linalg.norm(L_vector)
-            #projection = np.dot(b5_vector, L_vector_normalized) * L_vector_normalized
-            #new_b5_vector = b5_vector - projection
-            #new_ending_point = starting_point + new_b5_vector
-            B5_loc = sterimol_param['loc_B5'].iloc[0]
-            '''
-            start_point_B5 = atom1_coords + B5_loc * direction_vector
             
-            # Filter points where Projection Magnitude is greater than 0
-            points_above_zero = edited_coordinates_df[edited_coordinates_df['Projection Magnitude'] > 0]
-
-            # Plot all points where Projection Magnitude is greater than 0
-            ax.scatter(
-                points_above_zero['x'], 
-                points_above_zero['y'], 
-                points_above_zero['z'], 
-                c='blue',  # Choose a color for these points
-                s=20,      # Set the size of each point
-                picker=True
-            )
-             '''
+            B5_loc = sterimol_param['loc_B5'].iloc[0]
+            
             b5_start_point=atom1_coords+L_vector_normalized*B5_loc
             b5_proj_vec=max_projection_point-atom1_coords
             b5_proj_len = np.dot(max_projection_point, L_vector_normalized)
             b5_proj_point = atom1_coords + b5_proj_len * L_vector_normalized
-            '''
-            # Define a perpendicular direction vector for B1 line
-            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
-            # (you may already have this calculation in place; otherwise, compute it)
-            perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
-            perpendicular_direction /= np.linalg.norm(perpendicular_direction)
-
-            # Calculate the end point of the B1 line
-            end_point_B5 = start_point_B5 + b5_vector
-            '''
+            
             b5_perp_vec = max_projection_point - b5_proj_point
             b5_end_point = b5_start_point + b5_perp_vec
             
@@ -676,28 +550,14 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
             # Find the projection of b1_loc onto the blue axis (y-axis)
             projection_on_y_axis = atom1_coords + np.dot(b1_loc_vector - atom1_coords, L_vector_normalized) * L_vector_normalized
 
-            # Now calculate the perpendicular component of the B1 vector relative to the blue axis
-            #projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized  # Part of B1 aligned with blue axis
-            #perpendicular_b1_vector = b1_vector - projection  # Perpendicular part
-
-            # Plot the B1 vector, starting from the projection on the y-axis (along the blue line)
-            #start_point = projection_on_y_axis  # This is now aligned with the blue axis
-            #end_point = start_point + perpendicular_b1_vector  # End point of the B1 vector
-           
-            # Project b1_vector perpendicular to the blue line
-            #projection = np.dot(b1_vector, L_vector_normalized) * L_vector_normalized
-            #perpendicular_b1_vector = b1_vector - projection
-            #b1_horrible_vector = np.array([b1_xz[0], b1_loc, b1_xz[1]])
-            #b1_normalized_vector = b1_horrible_vector / np.sqrt(np.sum(b1_horrible_vector**2))
+            
             
             B1_loc = sterimol_param['loc_B1'].iloc[0]
            
             # Calculate the starting point along the blue line at B1_loc distance
             start_point_B1 = atom1_coords + B1_loc * direction_vector
 
-            # Define a perpendicular direction vector for B1 line
-            # Assuming 'perpendicular_direction' is orthogonal to 'direction_vector'
-            # (you may already have this calculation in place; otherwise, compute it)
+            
             perpendicular_direction = np.array([-direction_vector[1], direction_vector[0], 0])
             perpendicular_direction /= np.linalg.norm(perpendicular_direction)
 
@@ -709,13 +569,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
                     [start_point_B1[1], end_point_B1[1]],
                     [start_point_B1[2], end_point_B1[2]], color='red', linestyle='--')
             
-            '''      
-            # Optionally, add an arrowhead for the purple line
-            ax.quiver(start_point[0], start_point[1], start_point[2],
-                      perpendicular_vector[0], perpendicular_vector[1], perpendicular_vector[2],
-                      length=0.1, color='red', arrow_length_ratio=0.2)
-
-           '''
+            
 
         # If all atoms are selected, display the list of selected atom positions
         if len(nav.selected_atoms) == nav.num_atoms_to_pick:
@@ -778,15 +632,7 @@ def plot_molecule(xyz_data, connections, element_data, atom_numbers, file_path, 
     plt.show()
  
 def prepare_data(filtered_df, atom1_index, atom2_index):
-    """
-    Prepares data for finding the shortest vector and visualization.
-
-    Parameters:
-        df (DataFrame): DataFrame containing 3D points.
-
-    Returns:
-        tuple: Contains point_a, point_b, basis_v, basis_w, projected_points_3d, convex_hull, and ab_vector.
-    """
+    
     print("Generated Points:\n", df)
 
     # Select points A and B
@@ -886,7 +732,7 @@ def get_shortest_vector_3d(df, point_a, point_b):
     return shortest_vector_3d
    
 
-# Rest of the code remains the same
+
 # Function to remove violating connections
 def remove_violating_connections(xyz_data, connections, atom_symbols, threshold_distance):
     # Create a list to store the filtered connections
